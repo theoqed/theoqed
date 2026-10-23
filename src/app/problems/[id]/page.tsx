@@ -40,20 +40,49 @@ function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
 
 function MathText({ text }: { text: string }) {
   if (!text) return null;
-  const parts = text.split(/(\$[^$]+\$)/g);
+
+  // Mendukung $$...$$ (Display / Block) dan $...$ (Inline)
+  const parts = text.split(/(\$\$[\s\S]+?\$\$|\$[^$]+\$)/g);
 
   return (
     <span className="leading-relaxed font-serif">
       {parts.map((part, index) => {
+        // Mode Block / Rata Tengah ($$...$$)
+        if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) {
+          const formula = part.slice(2, -2);
+          try {
+            const html = katex.renderToString(formula, {
+              throwOnError: false,
+              displayMode: true, // Otomatis rata tengah & batas atas-bawah
+              output: 'html',
+            });
+            return (
+  <span
+    key={index}
+    className="block my-2 text-center overflow-x-auto [&_.katex-display]:my-0"
+    dangerouslySetInnerHTML={{ __html: html }}
+  />
+);
+          } catch (e) {
+            return <code key={index} className="text-red-500 font-mono text-xs block text-center my-2">{part}</code>;
+          }
+        }
+
+        // Mode Inline ($...$)
         if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
           const formula = part.slice(1, -1);
           try {
-            const html = katex.renderToString(formula, { throwOnError: false, output: 'html' });
+            const html = katex.renderToString(formula, {
+              throwOnError: false,
+              displayMode: false,
+              output: 'html',
+            });
             return <span key={index} dangerouslySetInnerHTML={{ __html: html }} />;
           } catch (e) {
             return <code key={index} className="text-red-500 font-mono text-xs">{part}</code>;
           }
         }
+
         return <span key={index}>{part}</span>;
       })}
     </span>
@@ -194,7 +223,7 @@ export default function ProblemDetailPage() {
               {/* Judul & Pernyataan Soal */}
               <div className="space-y-3">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pernyataan Soal</span>
-                <div className="text-slate-900 text-base sm:text-lg leading-relaxed">
+                <div className="text-slate-900 text-base sm:text-lg leading-relaxed whitespace-pre-line">
                   <MathText text={problem.statement} />
                 </div>
               </div>

@@ -48,20 +48,49 @@ function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
 
 function MathText({ text }: { text: string }) {
   if (!text) return null;
-  const parts = text.split(/(\$[^$]+\$)/g);
+
+  // Mendukung $$...$$ (Display / Block) dan $...$ (Inline)
+  const parts = text.split(/(\$\$[\s\S]+?\$\$|\$[^$]+\$)/g);
 
   return (
     <span className="leading-relaxed font-serif">
       {parts.map((part, index) => {
+        // Mode Block / Rata Tengah ($$...$$)
+        if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) {
+          const formula = part.slice(2, -2);
+          try {
+            const html = katex.renderToString(formula, {
+              throwOnError: false,
+              displayMode: true, // Otomatis rata tengah & batas atas-bawah
+              output: 'html',
+            });
+            return (
+  <span
+    key={index}
+    className="block my-2 text-center overflow-x-auto [&_.katex-display]:my-0"
+    dangerouslySetInnerHTML={{ __html: html }}
+  />
+);
+          } catch (e) {
+            return <code key={index} className="text-red-500 font-mono text-xs block text-center my-2">{part}</code>;
+          }
+        }
+
+        // Mode Inline ($...$)
         if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
           const formula = part.slice(1, -1);
           try {
-            const html = katex.renderToString(formula, { throwOnError: false, output: 'html' });
+            const html = katex.renderToString(formula, {
+              throwOnError: false,
+              displayMode: false,
+              output: 'html',
+            });
             return <span key={index} dangerouslySetInnerHTML={{ __html: html }} />;
           } catch (e) {
-            return <code key={index}>{part}</code>;
+            return <code key={index} className="text-red-500 font-mono text-xs">{part}</code>;
           }
         }
+
         return <span key={index}>{part}</span>;
       })}
     </span>
@@ -287,102 +316,130 @@ export default function ArsipPage() {
         )}
 
         {/* DAFTAR SOAL */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              Daftar Soal ({filteredProblems.length})
-            </h2>
-          </div>
+        {(loading || filteredProblems.length > 0 || currentSubFolders.length === 0) && (
+          <section className="space-y-3">
+            {filteredProblems.length > 0 && (
+              <div className="flex items-center justify-between">
+                <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Daftar Soal ({filteredProblems.length})
+                </h2>
+              </div>
+            )}
 
-          {loading ? (
-            <div className="bg-white p-10 rounded-xl border border-slate-200 text-center text-slate-400 text-xs">
-              Memuat data...
-            </div>
-          ) : filteredProblems.length > 0 ? (
-            <div className="space-y-3">
-              {filteredProblems.map((problem, idx) => {
-                const primaryBrief = problem.solutions?.[0]?.brief;
-                const solutionCount = problem.solutions?.length || 0;
-
-                return (
-                  <div key={problem.id} className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:border-slate-300 transition space-y-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                          #{idx + 1}
-                        </span>
-                        <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded">
-                          {problem.competition} {problem.year} ({problem.level})
-                        </span>
-                      </div>
-                      <span className="text-xs font-semibold text-slate-400">
-                        {problem.topic}
-                      </span>
-                    </div>
-
-                    <div className="text-slate-800 text-base leading-relaxed">
-                      <MathText text={problem.statement} />
-                    </div>
-
-                    {/* Toggle Hint / Solusi Ringkas dari Solusi Pertama */}
-                    {primaryBrief && (
-                      <div className="pt-2">
-                        <button
-                          onClick={() => setExpandedHintId(expandedHintId === problem.id ? null : problem.id)}
-                          className="text-xs font-bold text-slate-600 hover:text-blue-600 transition inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl"
-                        >
-                          <EyeIcon />
-                          <span>{expandedHintId === problem.id ? 'Sembunyikan Petunjuk' : 'Intip Petunjuk / Ide Solusi'}</span>
-                        </button>
-
-                        {expandedHintId === problem.id && (
-                          <div className="mt-2 p-3.5 bg-blue-50/60 border border-blue-100 rounded-xl text-xs text-slate-700 leading-relaxed">
-                            <span className="font-bold text-blue-800 block mb-1">
-                              Ide Ringkas ({problem.solutions[0].title || 'Solusi 1'}):
-                            </span>
-                            <MathText text={primaryBrief} />
-                          </div>
-                        )}
+            {loading ? (
+              <div className="bg-white p-10 rounded-xl border border-slate-200 text-center text-slate-400 text-xs">
+                Memuat data...
+              </div>
+            ) : filteredProblems.length > 0 ? (
+              <div className="space-y-8">
+                {Object.entries(
+                  filteredProblems.reduce((acc, problem) => {
+                    const sec = problem.section || '';
+                    if (!acc[sec]) acc[sec] = [];
+                    acc[sec].push(problem);
+                    return acc;
+                  }, {} as Record<string, typeof filteredProblems>)
+                ).map(([sectionName, problemsList]) => (
+                  <div key={sectionName || 'default'} className="space-y-3">
+                    
+                    {/* Judul Section + Garis Pembatas ala COLIMP */}
+                    {sectionName && (
+                      <div className="flex items-center gap-4 pt-4 pb-1">
+                        <h3 className="text-base sm:text-lg font-bold text-slate-800 shrink-0">
+                          {sectionName}
+                        </h3>
+                        <div className="h-[1px] w-full bg-slate-200" />
                       </div>
                     )}
 
-                    {/* Bottom Action Bar */}
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-400 font-mono">ID: {problem.id}</span>
-                        <span className="text-slate-300">•</span>
-                        <span className="text-slate-500 font-medium">
-                          {solutionCount > 0 ? `${solutionCount} Metode Solusi` : 'Belum Ada Solusi'}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => handleCopyLink(problem.id)}
-                          className="text-slate-400 hover:text-slate-700 font-medium transition inline-flex items-center gap-1"
-                          title="Salin Tautan Soal"
-                        >
-                          <ShareIcon />
-                          <span>{copiedId === problem.id ? 'Tersalin!' : 'Bagikan'}</span>
-                        </button>
-                        <a
-                          href={`/problems/${problem.id}`}
-                          className="font-bold text-blue-600 hover:text-blue-800 transition"
-                        >
-                          Buka Pembahasan Lengkap →
-                        </a>
-                      </div>
-                    </div>
+                    {/* Kartu Soal */}
+                    {problemsList.map((problem) => {
+                      const idx = filteredProblems.indexOf(problem);
+                      const primaryBrief = problem.solutions?.[0]?.brief;
+                      const solutionCount = problem.solutions?.length || 0;
+
+                      return (
+                        <div key={problem.id} className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:border-slate-300 transition space-y-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                                #{idx + 1}
+                              </span>
+                              <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded">
+                                {problem.competition} {problem.year} ({problem.level})
+                              </span>
+                            </div>
+                            <span className="text-xs font-semibold text-slate-400">
+                              {problem.topic}
+                            </span>
+                          </div>
+
+                          <div className="text-slate-800 text-base leading-relaxed whitespace-pre-line">
+                            <MathText text={problem.statement} />
+                          </div>
+
+                          {/* Toggle Hint / Solusi Ringkas */}
+                          {primaryBrief && (
+                            <div className="pt-2">
+                              <button
+                                onClick={() => setExpandedHintId(expandedHintId === problem.id ? null : problem.id)}
+                                className="text-xs font-bold text-slate-600 hover:text-blue-600 transition inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl"
+                              >
+                                <EyeIcon />
+                                <span>{expandedHintId === problem.id ? 'Sembunyikan Petunjuk' : 'Intip Petunjuk / Ide Solusi'}</span>
+                              </button>
+
+                              {expandedHintId === problem.id && (
+                                <div className="mt-2 p-3.5 bg-blue-50/60 border border-blue-100 rounded-xl text-xs text-slate-700 leading-relaxed">
+                                  <span className="font-bold text-blue-800 block mb-1">
+                                    Ide Ringkas ({problem.solutions[0].title || 'Solusi 1'}):
+                                  </span>
+                                  <MathText text={primaryBrief} />
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Bottom Action Bar */}
+                          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-400 font-mono">ID: {problem.id}</span>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-slate-500 font-medium">
+                                {solutionCount > 0 ? `${solutionCount} Metode Solusi` : 'Belum Ada Solusi'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => handleCopyLink(problem.id)}
+                                className="text-slate-400 hover:text-slate-700 font-medium transition inline-flex items-center gap-1"
+                                title="Salin Tautan Soal"
+                              >
+                                <ShareIcon />
+                                <span>{copiedId === problem.id ? 'Tersalin!' : 'Bagikan'}</span>
+                              </button>
+                              <a
+                                href={`/problems/${problem.id}`}
+                                className="font-bold text-blue-600 hover:text-blue-800 transition"
+                              >
+                                Buka Pembahasan Lengkap →
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          ) : currentSubFolders.length === 0 ? (
-            <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
-              Tidak ada soal yang ditemukan di dalam folder ini.
-            </div>
-          ) : null}
-        </section>
+                ))}
+              </div>
+            ) : currentSubFolders.length === 0 ? (
+              <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
+                Tidak ada soal yang ditemukan di dalam folder ini.
+              </div>
+            ) : null}
+          </section>
+        )}
 
       </div>
     </div>

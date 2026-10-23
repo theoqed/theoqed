@@ -70,21 +70,47 @@ function ChevronRightIcon({ className = "w-3.5 h-3.5" }: { className?: string })
 }
 
 function MathText({ text }: { text: string }) {
-  if (!text) return <span className="text-slate-400 italic font-sans text-xs">Preview rumus LaTeX akan muncul di sini...</span>;
-  const parts = text.split(/(\$[^$]+\$)/g);
+  if (!text) return null;
+
+  const parts = text.split(/(\$\$[\s\S]+?\$\$|\$[^$]+\$)/g);
 
   return (
-    <span className="leading-relaxed font-serif text-slate-900">
+    <span className="leading-relaxed font-serif">
       {parts.map((part, index) => {
+        if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) {
+          const formula = part.slice(2, -2);
+          try {
+            const html = katex.renderToString(formula, {
+              throwOnError: false,
+              displayMode: true,
+              output: 'html',
+            });
+            return (
+              <span
+                key={index}
+                className="block my-2 text-center overflow-x-auto [&_.katex-display]:my-0"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            );
+          } catch (e) {
+            return <code key={index} className="text-red-500 font-mono text-xs block text-center my-2">{part}</code>;
+          }
+        }
+
         if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
           const formula = part.slice(1, -1);
           try {
-            const html = katex.renderToString(formula, { throwOnError: false, output: 'html' });
+            const html = katex.renderToString(formula, {
+              throwOnError: false,
+              displayMode: false,
+              output: 'html',
+            });
             return <span key={index} dangerouslySetInnerHTML={{ __html: html }} />;
           } catch (e) {
             return <code key={index} className="text-red-500 font-mono text-xs">{part}</code>;
           }
         }
+
         return <span key={index}>{part}</span>;
       })}
     </span>
@@ -116,7 +142,6 @@ export default function AdminPage() {
 
   const [newFolderName, setNewFolderName] = useState('');
   
-  // State Form dengan Multi-Solusi
   const [formData, setFormData] = useState<{
     id: string;
     title: string;
@@ -126,6 +151,7 @@ export default function AdminPage() {
     topic: string;
     statement: string;
     solutions: SolutionItem[];
+    section: string;
   }>({
     id: '',
     title: '',
@@ -135,9 +161,9 @@ export default function AdminPage() {
     topic: '',
     statement: '',
     solutions: [{ ...defaultSolution }],
+    section: '',
   });
 
-  // Untuk penanganan input langkah-langkah solusi per baris di form
   const [stepsText, setStepsText] = useState<{ [solId: string]: string }>({
     'sol-1': '',
   });
@@ -202,6 +228,7 @@ export default function AdminPage() {
       topic: '',
       statement: '',
       solutions: [{ ...defaultSolution, id: initSolId }],
+      section: '',
     });
     setStepsText({ [initSolId]: '' });
     setEditingProblemId(null);
@@ -227,12 +254,12 @@ export default function AdminPage() {
       topic: problem.topic || '',
       statement: problem.statement || '',
       solutions: loadedSolutions,
+      section: problem.section || '',
     });
     setStepsText(newStepsText);
     setShowAddProblemModal(true);
   };
 
-  // Helper Kelola Multi Solusi
   const handleAddSolution = () => {
     const newSolId = `sol-${Date.now()}`;
     const newSol: SolutionItem = {
@@ -285,7 +312,6 @@ export default function AdminPage() {
   const handleSubmitProblem = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Memproses array langkah per solusi
     const processedSolutions = formData.solutions.map((sol) => {
       const rawText = stepsText[sol.id] || '';
       const stepsArray = rawText.split('\n').filter((step) => step.trim() !== '');
@@ -303,6 +329,7 @@ export default function AdminPage() {
       topic: formData.topic.trim() || 'Umum',
       statement: formData.statement,
       solutions: processedSolutions,
+      section: formData.section ? formData.section.trim() : null,
     };
 
     if (editingProblemId) {
@@ -608,7 +635,7 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="text-slate-800 text-base leading-relaxed mb-5">
+                  <div className="text-slate-800 text-base leading-relaxed mb-5 whitespace-pre-line">
                     <MathText text={problem.statement} />
                   </div>
 
@@ -764,6 +791,17 @@ export default function AdminPage() {
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Bagian / Section Soal (Opsional)</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Isian Singkat, Uraian, Bagian A"
+                    value={formData.section}
+                    onChange={(e) => setFormData({ ...formData, section: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
                 {/* Teks Soal & Live Preview */}
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-slate-700">Teks Soal (LaTeX $...$)</label>
@@ -775,7 +813,7 @@ export default function AdminPage() {
                     onChange={(e) => setFormData({ ...formData, statement: e.target.value })}
                     className={`${inputClass} font-mono leading-relaxed`}
                   />
-                  <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl min-h-[50px] text-sm">
+                  <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl min-h-[50px] text-sm whitespace-pre-line">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Live Preview Tampilan Soal:</span>
                     <MathText text={formData.statement} />
                   </div>

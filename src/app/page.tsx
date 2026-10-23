@@ -75,20 +75,49 @@ function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
 
 function MathText({ text }: { text: string }) {
   if (!text) return null;
-  const parts = text.split(/(\$[^$]+\$)/g);
+
+  // Mendukung $$...$$ (Display / Block) dan $...$ (Inline)
+  const parts = text.split(/(\$\$[\s\S]+?\$\$|\$[^$]+\$)/g);
 
   return (
     <span className="leading-relaxed font-serif">
       {parts.map((part, index) => {
+        // Mode Block / Rata Tengah ($$...$$)
+        if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) {
+          const formula = part.slice(2, -2);
+          try {
+            const html = katex.renderToString(formula, {
+              throwOnError: false,
+              displayMode: true, // Otomatis rata tengah & batas atas-bawah
+              output: 'html',
+            });
+            return (
+  <span
+    key={index}
+    className="block my-2 text-center overflow-x-auto [&_.katex-display]:my-0"
+    dangerouslySetInnerHTML={{ __html: html }}
+  />
+);
+          } catch (e) {
+            return <code key={index} className="text-red-500 font-mono text-xs block text-center my-2">{part}</code>;
+          }
+        }
+
+        // Mode Inline ($...$)
         if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
           const formula = part.slice(1, -1);
           try {
-            const html = katex.renderToString(formula, { throwOnError: false, output: 'html' });
+            const html = katex.renderToString(formula, {
+              throwOnError: false,
+              displayMode: false,
+              output: 'html',
+            });
             return <span key={index} dangerouslySetInnerHTML={{ __html: html }} />;
           } catch (e) {
-            return <code key={index}>{part}</code>;
+            return <code key={index} className="text-red-500 font-mono text-xs">{part}</code>;
           }
         }
+
         return <span key={index}>{part}</span>;
       })}
     </span>
@@ -117,7 +146,7 @@ export default function HomePage() {
       const { data: problemData } = await supabase
         .from('problems')
         .select('*')
-        .order('order_index', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(4);
 
       if (problemData) setRecentProblems(problemData as Problem[]);
@@ -180,7 +209,7 @@ export default function HomePage() {
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-              From Problems to Solutions<br className="hidden sm:inline" /> From Logic to Excellence
+              From Problems to Solutions.<br className="hidden sm:inline" /> From Logic to Excellence.
             </h1>
 
             <p className="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
@@ -196,7 +225,7 @@ export default function HomePage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Cari soal, topik, atau kompetisi (mis. Kombinatorika, Aljabar)..."
+                  placeholder="(fitur search masih dalam pengembangan)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-11 pr-28 py-3.5 bg-white border border-slate-200 shadow-sm rounded-2xl text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition"
@@ -220,7 +249,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Struktur Arsip</span>
-                <h2 className="text-lg font-bold text-slate-900">Kategori & Folder Utama</h2>
+                <h2 className="text-lg font-bold text-slate-900">Folder Soal-soal</h2>
               </div>
               <a href="/arsip" className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
                 <span>Buka Semua Folder</span>
@@ -269,7 +298,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pilihan Terbaru</span>
-                <h2 className="text-lg font-bold text-slate-900">Soal & Pembahasan Terkini</h2>
+                <h2 className="text-lg font-bold text-slate-900">Soal & Pembahasan Terbaru</h2>
               </div>
               <a href="/arsip" className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
                 <span>Lihat Semua Soal</span>
@@ -389,7 +418,7 @@ export default function HomePage() {
             <h4 className="font-bold text-slate-900 mb-3 uppercase tracking-wider text-[10px]">Kompetisi</h4>
             <ul className="space-y-2 text-slate-500">
               <li>ONMIPA-PT Wilayah & Nasional</li>
-              <li>OSN Tingkat Perguruan Tinggi</li>
+              <li>OSN Tingkat Kota, Provinsi, & Nasional</li>
               <li>International Mathematics Competition (IMC)</li>
             </ul>
           </div>
@@ -398,7 +427,7 @@ export default function HomePage() {
 
         <div className="max-w-5xl mx-auto px-6 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-400">
           <p>© 2026 TheoQED. Hak cipta dilindungi undang-undang.</p>
-          <p>Dirancang untuk persiapan kompetisi matematika perguruan tinggi.</p>
+          <p>Dirancang untuk persiapan kompetisi matematika sekolah dan perguruan tinggi.</p>
         </div>
       </footer>
 

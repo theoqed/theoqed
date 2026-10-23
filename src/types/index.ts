@@ -25,3 +25,12 @@ export interface Folder {
   name: string;
   parent_id?: string | null;
 }
+
+export interface Problem {
+  id: string;
+  title: string;
+  statement: string;
+  category: string;
+  section?: string; // Contoh: "Isian Singkat", "Uraian / Essay", "Bagian A"
+  // ... properti lainnya
+}
