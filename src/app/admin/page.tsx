@@ -309,10 +309,13 @@ export default function AdminPage() {
     }
   };
 
-  const handleSubmitProblem = async (e: React.FormEvent) => {
-    e.preventDefault();
+ const handleSubmitProblem = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    const processedSolutions = formData.solutions.map((sol) => {
+  // Jika langkah & brief kosong, simpan array solutions sebagai array kosong []
+  const processedSolutions = formData.solutions
+    .filter((sol) => sol.brief?.trim() !== '' || stepsText[sol.id]?.trim() !== '')
+    .map((sol) => {
       const rawText = stepsText[sol.id] || '';
       const stepsArray = rawText.split('\n').filter((step) => step.trim() !== '');
       return {

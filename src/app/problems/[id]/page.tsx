@@ -311,8 +311,27 @@ export default function ProblemDetailPage() {
 
                 </div>
               ) : (
-                <div className="p-10 bg-white rounded-2xl border border-slate-200 text-center text-xs text-slate-400">
-                  Belum ada pembahasan yang diunggah untuk soal ini.
+                <div className="bg-white p-8 sm:p-12 rounded-2xl border border-slate-200/80 text-center space-y-4 shadow-sm">
+                  <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto text-lg font-bold">
+                    ?
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold text-slate-800">Pembahasan Belum Tersedia</h3>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                      Soal ini belum memiliki langkah penyelesaian. Punya ide atau solusi untuk soal ini? Mari bantu pembaca lain!
+                    </p>
+                  </div>
+                  
+                  <div className="pt-2">
+                    <a
+                      href="https://ig.me/m/theoqed.id"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition shadow-sm"
+                    >
+                      <span>+ Ajukan Solusi Kamu (ID: {problem.id})</span>
+                    </a>
+                  </div>
                 </div>
               )}
 

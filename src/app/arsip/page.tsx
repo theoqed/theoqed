@@ -353,83 +353,113 @@ export default function ArsipPage() {
                     )}
 
                     {/* Kartu Soal */}
-                    {problemsList.map((problem) => {
-                      const idx = filteredProblems.indexOf(problem);
-                      const primaryBrief = problem.solutions?.[0]?.brief;
-                      const solutionCount = problem.solutions?.length || 0;
+                    {/* Kartu Soal */}
+                  {problemsList.map((problem) => {
+                    const idx = filteredProblems.indexOf(problem);
+                    const primaryBrief = problem.solutions?.[0]?.brief;
+                    const solutionCount = problem.solutions?.length || 0;
 
-                      return (
-                        <div key={problem.id} className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:border-slate-300 transition space-y-4">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                                #{idx + 1}
-                              </span>
-                              <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded">
-                                {problem.competition} {problem.year} ({problem.level})
-                              </span>
-                            </div>
-                            <span className="text-xs font-semibold text-slate-400">
-                              {problem.topic}
+                    return (
+                      <div key={problem.id} className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm hover:border-slate-300 transition space-y-3 sm:space-y-4">
+                        
+                        {/* Header Metadata (Nomor, Kompetisi, Topik) */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                            <span className="text-[10px] sm:text-xs font-black text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                              #{idx + 1}
+                            </span>
+                            <span className="text-[10px] sm:text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              {problem.competition} {problem.year} ({problem.level})
                             </span>
                           </div>
+                          <span className="text-[10px] sm:text-xs font-semibold text-slate-400 shrink-0">
+                            {problem.topic}
+                          </span>
+                        </div>
 
-                          <div className="text-slate-800 text-base leading-relaxed whitespace-pre-line">
-                            <MathText text={problem.statement} />
+                        {/* Teks Soal (Ukuran font lebih ringkas di HP) */}
+                        <div className="text-slate-800 text-sm sm:text-base leading-relaxed whitespace-pre-line">
+                          <MathText text={problem.statement} />
+                        </div>
+
+                        {/* Toggle Hint / Solusi Ringkas */}
+                        {primaryBrief && (
+                          <div className="pt-1 sm:pt-2">
+                            <button
+                              onClick={() => setExpandedHintId(expandedHintId === problem.id ? null : problem.id)}
+                              className="text-[11px] sm:text-xs font-bold text-slate-600 hover:text-blue-600 transition inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl"
+                            >
+                              <EyeIcon />
+                              <span>{expandedHintId === problem.id ? 'Sembunyikan Petunjuk' : 'Intip Petunjuk / Ide Solusi'}</span>
+                            </button>
+
+                            {expandedHintId === problem.id && (
+                              <div className="mt-2 p-3 sm:p-3.5 bg-blue-50/60 border border-blue-100 rounded-xl text-[11px] sm:text-xs text-slate-700 leading-relaxed">
+                                <span className="font-bold text-blue-800 block mb-1">
+                                  Ide Ringkas ({problem.solutions[0].title || 'Solusi 1'}):
+                                </span>
+                                <MathText text={primaryBrief} />
+                              </div>
+                            )}
                           </div>
+                        )}
 
-                          {/* Toggle Hint / Solusi Ringkas */}
-                          {primaryBrief && (
-                            <div className="pt-2">
-                              <button
-                                onClick={() => setExpandedHintId(expandedHintId === problem.id ? null : problem.id)}
-                                className="text-xs font-bold text-slate-600 hover:text-blue-600 transition inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl"
-                              >
-                                <EyeIcon />
-                                <span>{expandedHintId === problem.id ? 'Sembunyikan Petunjuk' : 'Intip Petunjuk / Ide Solusi'}</span>
-                              </button>
+                        {/* Bottom Action Bar (Responsif Ringkas untuk HP) */}
+                        <div className="pt-2.5 sm:pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                          
+                          {/* ID & Status Solusi */}
+                          {/* ID & Status Solusi (Sembunyikan status di HP) */}
+<div className="flex items-center gap-1.5 sm:gap-2">
+  <span className="text-[10px] sm:text-xs text-slate-400 font-mono">ID: {problem.id}</span>
+  <span className="text-slate-300 text-xs hidden sm:inline">•</span>
+  {solutionCount > 0 ? (
+    <span className="hidden sm:inline-block text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+      {solutionCount} metode solusi
+    </span>
+  ) : (
+    <span className="hidden sm:inline-block text-[11px] font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/60">
+      Solusi belum ditambahkan
+    </span>
+  )}
+</div>
+                          
+                          {/* Tombol Bagikan & Pembahasan / Ajukan Solusi */}
+                          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto sm:ml-0">
+                            <button
+  onClick={() => handleCopyLink(problem.id)}
+  className="text-slate-400 hover:text-slate-700 font-medium transition inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-slate-50 text-[10px] sm:text-xs"
+  title="Salin Tautan Soal"
+>
+  <ShareIcon />
+  <span className={copiedId === problem.id ? 'inline font-bold text-blue-600' : 'hidden sm:inline'}>
+    {copiedId === problem.id ? 'Tersalin!' : 'Bagikan'}
+  </span>
+</button>
 
-                              {expandedHintId === problem.id && (
-                                <div className="mt-2 p-3.5 bg-blue-50/60 border border-blue-100 rounded-xl text-xs text-slate-700 leading-relaxed">
-                                  <span className="font-bold text-blue-800 block mb-1">
-                                    Ide Ringkas ({problem.solutions[0].title || 'Solusi 1'}):
-                                  </span>
-                                  <MathText text={primaryBrief} />
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Bottom Action Bar */}
-                          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2">
-                              <span className="text-slate-400 font-mono">ID: {problem.id}</span>
-                              <span className="text-slate-300">•</span>
-                              <span className="text-slate-500 font-medium">
-                                {solutionCount > 0 ? `${solutionCount} Metode Solusi` : 'Belum Ada Solusi'}
-                              </span>
-                            </div>
-                            
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => handleCopyLink(problem.id)}
-                                className="text-slate-400 hover:text-slate-700 font-medium transition inline-flex items-center gap-1"
-                                title="Salin Tautan Soal"
-                              >
-                                <ShareIcon />
-                                <span>{copiedId === problem.id ? 'Tersalin!' : 'Bagikan'}</span>
-                              </button>
+                            {solutionCount > 0 ? (
                               <a
                                 href={`/problems/${problem.id}`}
-                                className="font-bold text-blue-600 hover:text-blue-800 transition"
+                                className="font-bold text-blue-700 hover:text-blue-800 bg-blue-100/80 hover:bg-blue-200/80 border border-blue-300/60 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl transition inline-flex items-center gap-1 text-[10px] sm:text-xs whitespace-nowrap"
                               >
-                                Buka Pembahasan Lengkap →
+                                <span>Buka Solusi  →</span>
                               </a>
-                            </div>
+                            ) : (
+                              <a
+                                href="https://ig.me/m/theoqed.id"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-bold text-amber-700 hover:text-amber-800 bg-amber-100/80 hover:bg-amber-200/80 border border-amber-300/60 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl transition inline-flex items-center gap-1 text-[10px] sm:text-xs whitespace-nowrap"
+                              >
+                                <span>Ajukan Solusi  +</span>
+                              </a>
+                            )}
                           </div>
+
                         </div>
-                      );
-                    })}
+
+                      </div>
+                    );
+                  })}
                   </div>
                 ))}
               </div>
