@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Background Kotak Blue-600 dengan Rounded Corner -->
+  <rect width="32" height="32" rx="8" fill="#2563EB" />
+  
+  <!-- Simbol Akar Matematis (Radical Sign) Putih -->
+  <path d="M6 18l4 4 5-11h11" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

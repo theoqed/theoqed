@@ -130,18 +130,21 @@ export default function AdminPage() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [problems, setProblems] = useState<Problem[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
 
   const [showAddProblemModal, setShowAddProblemModal] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
   const [showAddFolderModal, setShowAddFolderModal] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<{ id: string; name: string } | null>(null);
   const [editingProblemId, setEditingProblemId] = useState<string | null>(null);
-  
+
   const [moveTarget, setMoveTarget] = useState<{ id: string; type: 'problem' | 'folder'; name: string } | null>(null);
   const [moveModalFolderId, setMoveModalFolderId] = useState<string | null>(null);
 
   const [newFolderName, setNewFolderName] = useState('');
-  
+
+  // State Form Single Problem
   const [formData, setFormData] = useState<{
     id: string;
     title: string;
@@ -168,16 +171,44 @@ export default function AdminPage() {
     'sol-1': '',
   });
 
+  // State Input Massal (Batch)
+  const [batchMeta, setBatchMeta] = useState({
+    competition: '',
+    year: 2026,
+    level: '',
+    topic: '',
+    section: '',
+  });
+
+  const [batchItems, setBatchItems] = useState<Array<{ id: string; title: string; statement: string }>>([
+    { id: '', title: '', statement: '' },
+  ]);
+
   useEffect(() => {
     fetchData();
   }, []);
 
   async function fetchData() {
     setLoading(true);
-    const { data: folderData } = await supabase.from('folders').select('*').order('name', { ascending: true });
-    if (folderData) setFolders(folderData as Folder[]);
 
-    const { data: problemData } = await supabase.from('problems').select('*').order('order_index', { ascending: true });
+    // Ambil data folder & urutkan di JavaScript untuk menghindari kegagalan jika order_index bernilai null
+    const { data: folderData, error: fErr } = await supabase.from('folders').select('*');
+    if (!fErr && folderData) {
+      const sortedFolders = (folderData as Folder[]).sort((a, b) => {
+        const orderA = (a as any).order_index ?? 0;
+        const orderB = (b as any).order_index ?? 0;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name);
+      });
+      setFolders(sortedFolders);
+    }
+
+    // Ambil data soal
+    const { data: problemData } = await supabase
+      .from('problems')
+      .select('*')
+      .order('order_index', { ascending: true });
+
     if (problemData) setProblems(problemData as Problem[]);
     setLoading(false);
   }
@@ -222,7 +253,7 @@ export default function AdminPage() {
     setFormData({
       id: '',
       title: '',
-      competition: '',
+      competition: currentFolder?.name || '',
       year: 2026,
       level: '',
       topic: '',
@@ -232,6 +263,17 @@ export default function AdminPage() {
     });
     setStepsText({ [initSolId]: '' });
     setEditingProblemId(null);
+  };
+
+  const resetBatchForm = () => {
+    setBatchMeta({
+      competition: currentFolder?.name || '',
+      year: 2026,
+      level: '',
+      topic: '',
+      section: '',
+    });
+    setBatchItems([{ id: '', title: '', statement: '' }]);
   };
 
   const handleStartEdit = (problem: Problem) => {
@@ -291,13 +333,39 @@ export default function AdminPage() {
     });
   };
 
+  // Handler Batch Input
+  const handleAddBatchRow = () => {
+    setBatchItems([...batchItems, { id: '', title: '', statement: '' }]);
+  };
+
+  const handleRemoveBatchRow = (index: number) => {
+    if (batchItems.length <= 1) return;
+    setBatchItems(batchItems.filter((_, i) => i !== index));
+  };
+
+  const handleBatchItemChange = (index: number, field: 'id' | 'title' | 'statement', value: string) => {
+    const updated = [...batchItems];
+    updated[index][field] = value;
+    setBatchItems(updated);
+  };
+
+  // Buat Folder Baru
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFolderName.trim()) return;
 
+    const currentMaxOrder = currentSubFolders.length > 0
+      ? Math.max(...currentSubFolders.map((f) => (f as any).order_index || 0))
+      : 0;
+
     const folderId = newFolderName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString().slice(-4);
     const { error } = await supabase.from('folders').insert([
-      { id: folderId, name: newFolderName.trim(), parent_id: currentFolderId }
+      {
+        id: folderId,
+        name: newFolderName.trim(),
+        parent_id: currentFolderId,
+        order_index: currentMaxOrder + 1,
+      }
     ]);
 
     if (!error) {
@@ -309,20 +377,68 @@ export default function AdminPage() {
     }
   };
 
- const handleSubmitProblem = async (e: React.FormEvent) => {
-  e.preventDefault();
+  // Ubah Nama (Rename) Folder
+  const handleRenameFolderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFolder || !editingFolder.name.trim()) return;
 
-  // Jika langkah & brief kosong, simpan array solutions sebagai array kosong []
-  const processedSolutions = formData.solutions
-    .filter((sol) => sol.brief?.trim() !== '' || stepsText[sol.id]?.trim() !== '')
-    .map((sol) => {
-      const rawText = stepsText[sol.id] || '';
-      const stepsArray = rawText.split('\n').filter((step) => step.trim() !== '');
-      return {
-        ...sol,
-        steps: stepsArray,
-      };
-    });
+    const { data, error } = await supabase
+      .from('folders')
+      .update({ name: editingFolder.name.trim() })
+      .eq('id', editingFolder.id)
+      .select();
+
+    if (error) {
+      alert(`Gagal merename folder: ${error.message}`);
+    } else if (!data || data.length === 0) {
+      alert('Gagal merename: Data tidak ditemukan atau terhalang aturan RLS Supabase.');
+    } else {
+      setEditingFolder(null);
+      await fetchData();
+    }
+  };
+
+  // Reorder Folder (Tukar urutan 1-per-1)
+  const handleMoveFolderOrder = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= currentSubFolders.length) return;
+
+    const updatedSubFolders = [...currentSubFolders];
+    const temp = updatedSubFolders[index];
+    updatedSubFolders[index] = updatedSubFolders[targetIndex];
+    updatedSubFolders[targetIndex] = temp;
+
+    // Update order_index seluruh folder di level ini secara eksplisit
+    const updates = updatedSubFolders.map((folder, i) =>
+      supabase
+        .from('folders')
+        .update({ order_index: i + 1 })
+        .eq('id', folder.id)
+    );
+
+    const results = await Promise.all(updates);
+    const hasError = results.find((r) => r.error);
+
+    if (hasError?.error) {
+      alert(`Gagal mengubah urutan: ${hasError.error.message}`);
+    } else {
+      await fetchData();
+    }
+  };
+
+  const handleSubmitProblem = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const processedSolutions = formData.solutions
+      .filter((sol) => sol.brief?.trim() !== '' || stepsText[sol.id]?.trim() !== '')
+      .map((sol) => {
+        const rawText = stepsText[sol.id] || '';
+        const stepsArray = rawText.split('\n').filter((step) => step.trim() !== '');
+        return {
+          ...sol,
+          steps: stepsArray,
+        };
+      });
 
     const payload = {
       title: formData.title.trim(),
@@ -367,6 +483,45 @@ export default function AdminPage() {
       } else {
         alert(`Gagal menyimpan soal: ${error.message}`);
       }
+    }
+  };
+
+  const handleBatchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const validItems = batchItems.filter(
+      (item) => item.id.trim() !== '' && item.statement.trim() !== ''
+    );
+
+    if (validItems.length === 0) {
+      alert('Harap isi minimal satu soal dengan ID dan Pernyataan yang valid.');
+      return;
+    }
+
+    const currentMaxOrder = problems.length > 0 ? Math.max(...problems.map((p) => p.order_index || 0)) : 0;
+
+    const payload = validItems.map((item, index) => ({
+      id: item.id.trim(),
+      title: item.title.trim() || `Soal ${item.id.trim()}`,
+      competition: batchMeta.competition.trim() || currentFolder?.name || 'Umum',
+      year: Number(batchMeta.year),
+      level: batchMeta.level.trim() || 'Umum',
+      topic: batchMeta.topic.trim() || 'Umum',
+      section: batchMeta.section.trim() ? batchMeta.section.trim() : null,
+      statement: item.statement,
+      solutions: [],
+      folder_id: currentFolderId,
+      order_index: currentMaxOrder + index + 1,
+    }));
+
+    const { error } = await supabase.from('problems').insert(payload);
+
+    if (!error) {
+      setShowBatchModal(false);
+      resetBatchForm();
+      fetchData();
+    } else {
+      alert(`Gagal menambah batch: ${error.message}`);
     }
   };
 
@@ -427,7 +582,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans pb-20">
-      
+
       {/* Header Admin */}
       <header className="border-b border-slate-200 bg-slate-900 text-white sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -451,7 +606,7 @@ export default function AdminPage() {
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Lokasi Folder Kerja</span>
-            
+
             <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
               <button
                 onClick={() => setCurrentFolderId(null)}
@@ -482,7 +637,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setShowAddFolderModal(true)}
               className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition inline-flex items-center gap-1.5"
@@ -492,13 +647,23 @@ export default function AdminPage() {
             </button>
             <button
               onClick={() => {
+                resetBatchForm();
+                setShowBatchModal(true);
+              }}
+              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition shadow-sm inline-flex items-center gap-1.5"
+            >
+              <PlusIcon />
+              <span>+ Input Massal (Batch)</span>
+            </button>
+            <button
+              onClick={() => {
                 resetForm();
                 setShowAddProblemModal(true);
               }}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-sm inline-flex items-center gap-1.5"
             >
               <PlusIcon />
-              <span>+ Tambah Soal di Sini</span>
+              <span>+ Tambah Soal Satuan</span>
             </button>
           </div>
         </div>
@@ -506,7 +671,7 @@ export default function AdminPage() {
 
       {/* Main Folder Workspace */}
       <div className="max-w-5xl mx-auto px-6 mt-8 space-y-8">
-        
+
         {/* SUB-FOLDERS */}
         {currentSubFolders.length > 0 && (
           <section className="space-y-3">
@@ -515,7 +680,7 @@ export default function AdminPage() {
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {currentSubFolders.map((folder) => {
+              {currentSubFolders.map((folder, idx) => {
                 const childFolderCount = folders.filter((f) => f.parent_id === folder.id).length;
                 const childProblemCount = problems.filter((p) => p.folder_id === folder.id).length;
 
@@ -528,7 +693,7 @@ export default function AdminPage() {
                       onClick={() => setCurrentFolderId(folder.id)}
                       className="flex items-center gap-3 cursor-pointer truncate flex-1 pr-2"
                     >
-                      <div className="p-2 rounded-lg bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition">
+                      <div className="p-2 rounded-lg bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition shrink-0">
                         <FolderIcon className="w-4 h-4" />
                       </div>
                       <div className="truncate">
@@ -543,7 +708,31 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    {/* Tombol Aksi Folder: Naik/Turun, Rename, Move, Delete */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleMoveFolderOrder(idx, 'up')}
+                        disabled={idx === 0}
+                        className="p-1 bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
+                        title="Naikkan Urutan Folder"
+                      >
+                        <ArrowUpIcon />
+                      </button>
+                      <button
+                        onClick={() => handleMoveFolderOrder(idx, 'down')}
+                        disabled={idx === currentSubFolders.length - 1}
+                        className="p-1 bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
+                        title="Turunkan Urutan Folder"
+                      >
+                        <ArrowDownIcon />
+                      </button>
+                      <button
+                        onClick={() => setEditingFolder({ id: folder.id, name: folder.name })}
+                        className="p-1.5 hover:bg-blue-50 rounded text-slate-400 hover:text-blue-600 transition"
+                        title="Ubah Nama (Rename) Folder"
+                      >
+                        <EditIcon />
+                      </button>
                       <button
                         onClick={() => {
                           setMoveTarget({ id: folder.id, type: 'folder', name: folder.name });
@@ -653,7 +842,7 @@ export default function AdminPage() {
             </div>
           ) : currentSubFolders.length === 0 ? (
             <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
-              Folder ini masih kosong. Klik <strong>+ Tambah Soal di Sini</strong> untuk menginput soal.
+              Folder ini masih kosong. Klik <strong>+ Input Massal (Batch)</strong> atau <strong>+ Tambah Soal Satuan</strong> untuk menginput soal.
             </div>
           ) : null}
         </section>
@@ -697,16 +886,233 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* MODAL 2: INPUT / EDIT SOAL (MULTI-SOLUSI & AUTHOR) */}
-      {showAddProblemModal && (
+      {/* MODAL RENAME FOLDER */}
+      {editingFolder && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-md w-full shadow-xl space-y-4">
+            <h3 className="text-base font-bold text-slate-900">Ubah Nama Folder</h3>
+            <form onSubmit={handleRenameFolderSubmit} className="space-y-4">
+              <input
+                type="text"
+                required
+                placeholder="Nama Folder Baru"
+                value={editingFolder.name}
+                onChange={(e) => setEditingFolder({ ...editingFolder, name: e.target.value })}
+                className={inputClass}
+              />
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingFolder(null)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-xl transition"
+                >
+                  Simpan Nama
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: INPUT SOAL MASSAL (BATCH) */}
+      {showBatchModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-slate-200/80 max-w-4xl w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             
-            {/* Header Modal - Fixed */}
+            <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Input Soal Massal (Batch)</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Isi metadata satu kali, lalu masukkan ID, Judul, dan Teks untuk banyak soal sekaligus.
+                </p>
+              </div>
+              <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-lg">
+                Folder: {currentFolder ? currentFolder.name : 'Root'}
+              </span>
+            </div>
+
+            <form onSubmit={handleBatchSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-6 space-y-6 overflow-y-auto flex-1">
+                
+                {/* METADATA BERSAMA */}
+                <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Metadata Bersama Batch Ini</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Kompetisi</label>
+                      <input
+                        type="text"
+                        placeholder="mis. ONMIPA-PT"
+                        value={batchMeta.competition}
+                        onChange={(e) => setBatchMeta({ ...batchMeta, competition: e.target.value })}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Tahun</label>
+                      <input
+                        type="number"
+                        required
+                        value={batchMeta.year}
+                        onChange={(e) => setBatchMeta({ ...batchMeta, year: Number(e.target.value) })}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Tingkat</label>
+                      <input
+                        type="text"
+                        placeholder="mis. Wilayah / Nasional"
+                        value={batchMeta.level}
+                        onChange={(e) => setBatchMeta({ ...batchMeta, level: e.target.value })}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Topik / Bidang</label>
+                      <input
+                        type="text"
+                        placeholder="mis. Struktur Aljabar"
+                        value={batchMeta.topic}
+                        onChange={(e) => setBatchMeta({ ...batchMeta, topic: e.target.value })}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Seksi / Section (Opsional)</label>
+                      <input
+                        type="text"
+                        placeholder="mis. Isian Singkat, Uraian"
+                        value={batchMeta.section}
+                        onChange={(e) => setBatchMeta({ ...batchMeta, section: e.target.value })}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* DAFTAR ITEM SOAL */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      Daftar Soal ({batchItems.length})
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={handleAddBatchRow}
+                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition inline-flex items-center gap-1"
+                    >
+                      <PlusIcon className="w-3.5 h-3.5" />
+                      <span>+ Tambah Baris Soal</span>
+                    </button>
+                  </div>
+
+                  {batchItems.map((item, index) => (
+                    <div key={index} className="p-4 bg-white border border-slate-200 rounded-xl space-y-3 relative shadow-sm">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md">
+                          Baris Soal #{index + 1}
+                        </span>
+                        {batchItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBatchRow(index)}
+                            className="text-xs text-red-500 hover:text-red-700 font-bold transition inline-flex items-center gap-1"
+                          >
+                            <TrashIcon />
+                            <span>Hapus Baris</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">ID Soal (Unik)</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="mis. ONM-26-W1-I1"
+                            value={item.id}
+                            onChange={(e) => handleBatchItemChange(index, 'id', e.target.value)}
+                            className={`${inputClass} font-mono`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Judul Singkat Soal</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="mis. Soal 1 Isian Singkat"
+                            value={item.title}
+                            onChange={(e) => handleBatchItemChange(index, 'title', e.target.value)}
+                            className={inputClass}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Pernyataan Soal (LaTeX $...$)</label>
+                        <textarea
+                          rows={3}
+                          required
+                          placeholder="Tuliskan pernyataan soal di sini..."
+                          value={item.statement}
+                          onChange={(e) => handleBatchItemChange(index, 'statement', e.target.value)}
+                          className={`${inputClass} font-mono leading-relaxed`}
+                        />
+                      </div>
+
+                      {/* Live Preview Per Soal */}
+                      <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs whitespace-pre-line min-h-[42px]">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                          Live Preview Tampilan Soal #{index + 1}:
+                        </span>
+                        <MathText text={item.statement} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+              </div>
+
+              <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t border-slate-100 shrink-0 bg-white">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBatchModal(false);
+                    resetBatchForm();
+                  }}
+                  className="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 rounded-xl transition shadow-sm"
+                >
+                  Simpan Semua Soal Massal ({batchItems.length})
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: INPUT / EDIT SOAL SATUAN */}
+      {showAddProblemModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 max-w-4xl w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+
             <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  {editingProblemId ? 'Edit Soal' : 'Tambah Soal Baru'}
+                  {editingProblemId ? 'Edit Soal' : 'Tambah Soal Satuan'}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Gunakan notasi <code className="text-blue-600 font-mono font-bold">$...$</code> untuk persamaan matematika.
@@ -717,11 +1123,9 @@ export default function AdminPage() {
               </span>
             </div>
 
-            {/* Form Body - Scrollable */}
             <form onSubmit={handleSubmitProblem} className="flex flex-col flex-1 overflow-hidden">
               <div className="p-6 space-y-6 overflow-y-auto flex-1">
-                
-                {/* Informasi Utama Soal */}
+
                 <div className="space-y-4">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Metadata Soal</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -801,11 +1205,10 @@ export default function AdminPage() {
                     placeholder="Contoh: Isian Singkat, Uraian, Bagian A"
                     value={formData.section}
                     onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={inputClass}
                   />
                 </div>
 
-                {/* Teks Soal & Live Preview */}
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-slate-700">Teks Soal (LaTeX $...$)</label>
                   <textarea
@@ -822,7 +1225,6 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* DYNAMIC MULTI-SOLUSI SECTION */}
                 <div className="space-y-4 pt-4 border-t border-slate-200/80">
                   <div className="flex items-center justify-between">
                     <div>
@@ -920,7 +1322,6 @@ export default function AdminPage() {
 
               </div>
 
-              {/* Action Buttons Footer - Fixed */}
               <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t border-slate-100 shrink-0 bg-white">
                 <button
                   type="button"
@@ -944,7 +1345,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* MODAL 3: PENJELAJAH FOLDER GOOGLE DRIVE STYLE */}
+      {/* MODAL 4: PENJELAJAH FOLDER GOOGLE DRIVE STYLE */}
       {moveTarget && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-md w-full shadow-xl space-y-4">

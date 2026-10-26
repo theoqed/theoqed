@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import katex from 'katex';
 import { supabase } from '../../../lib/supabase';
 import { Problem, SolutionItem } from '@/types';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 function UserIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
   return (
@@ -41,34 +42,31 @@ function InstagramIcon({ className = "w-4 h-4" }: { className?: string }) {
 function MathText({ text }: { text: string }) {
   if (!text) return null;
 
-  // Mendukung $$...$$ (Display / Block) dan $...$ (Inline)
   const parts = text.split(/(\$\$[\s\S]+?\$\$|\$[^$]+\$)/g);
 
   return (
     <span className="leading-relaxed font-serif">
       {parts.map((part, index) => {
-        // Mode Block / Rata Tengah ($$...$$)
         if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) {
           const formula = part.slice(2, -2);
           try {
             const html = katex.renderToString(formula, {
               throwOnError: false,
-              displayMode: true, // Otomatis rata tengah & batas atas-bawah
+              displayMode: true,
               output: 'html',
             });
             return (
-  <span
-    key={index}
-    className="block my-2 text-center overflow-x-auto [&_.katex-display]:my-0"
-    dangerouslySetInnerHTML={{ __html: html }}
-  />
-);
+              <span
+                key={index}
+                className="block my-2 text-center overflow-x-auto [&_.katex-display]:my-0"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            );
           } catch (e) {
             return <code key={index} className="text-red-500 font-mono text-xs block text-center my-2">{part}</code>;
           }
         }
 
-        // Mode Inline ($...$)
         if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
           const formula = part.slice(1, -1);
           try {
@@ -130,37 +128,40 @@ export default function ProblemDetailPage() {
   const currentSol: SolutionItem | undefined = problem?.solutions?.[activeTab];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans pb-20">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans pb-20 transition-colors duration-200">
       
       {/* Top Bar Konsisten */}
-      <header className="border-b border-slate-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-50">
-  <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2">
-    
-    {/* Logo Responsif */}
-    <a href="/" className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-0.5 shrink-0">
-      <span className="text-blue-600">√</span>TheoQED<span className="text-blue-600">.</span>
-    </a>
+      <header className="border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 transition-colors duration-200">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2">
+          
+          {/* Logo Responsif */}
+          <a href="/" className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-0.5 shrink-0">
+            <span className="text-blue-600 dark:text-blue-400">√</span>TheoQED<span className="text-blue-600 dark:text-blue-400">.</span>
+          </a>
 
-    {/* Navigasi Responsif */}
-    <nav className="flex items-center gap-3 sm:gap-6 text-xs sm:text-sm font-medium text-slate-600">
-      <a href="/" className="hover:text-slate-900 transition">Beranda</a>
-      <a href="/arsip" className="hover:text-slate-900 transition whitespace-nowrap">Arsip Soal</a>
-    </nav>
+          {/* Navigasi Responsif */}
+          <nav className="flex items-center gap-3 sm:gap-6 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">
+            <a href="/" className="hover:text-slate-900 dark:hover:text-white transition">Beranda</a>
+            <a href="/arsip" className="hover:text-slate-900 dark:hover:text-white transition whitespace-nowrap">Arsip Soal</a>
+          </nav>
 
-    {/* Tombol Instagram (Ikon Saja di HP, Teks Lengkap di Laptop) */}
-    <a
-      href="https://instagram.com/davemarcellino_"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold p-2 sm:px-3.5 sm:py-2 rounded-xl transition inline-flex items-center gap-2 border border-slate-200/60 shrink-0"
-      title="Instagram @davemarcellino_"
-    >
-      <InstagramIcon className="w-4 h-4 text-pink-600" />
-      <span className="hidden sm:inline">@davemarcellino_</span>
-    </a>
+          {/* Area Kanan: ThemeToggle + Instagram Berdampingan */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <ThemeToggle />
+            <a
+              href="https://instagram.com/davemarcellino_"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold p-2 sm:px-3.5 sm:py-2 rounded-xl transition inline-flex items-center gap-2 border border-slate-200/60 dark:border-slate-700/60"
+              title="Instagram @davemarcellino_"
+            >
+              <InstagramIcon className="w-4 h-4 text-pink-600 dark:text-pink-400" />
+              <span className="hidden sm:inline">@davemarcellino_</span>
+            </a>
+          </div>
 
-  </div>
-</header>
+        </div>
+      </header>
 
       {/* Main Container */}
       <main className="max-w-4xl mx-auto px-6 pt-8 space-y-6">
@@ -169,7 +170,7 @@ export default function ProblemDetailPage() {
         <div className="flex items-center justify-between">
           <button
             onClick={() => router.back()}
-            className="text-xs font-bold text-slate-600 hover:text-slate-900 transition inline-flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200/80 shadow-sm"
+            className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition inline-flex items-center gap-2 bg-white dark:bg-slate-900 px-3.5 py-2 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm"
           >
             <ArrowLeftIcon />
             <span>Kembali ke Arsip</span>
@@ -177,7 +178,7 @@ export default function ProblemDetailPage() {
 
           <button
             onClick={handleCopyLink}
-            className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition inline-flex items-center gap-1.5 bg-white px-3.5 py-2 rounded-xl border border-slate-200/80 shadow-sm"
+            className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition inline-flex items-center gap-1.5 bg-white dark:bg-slate-900 px-3.5 py-2 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm"
           >
             <ShareIcon />
             <span>{copied ? 'Tautan Tersalin!' : 'Bagikan Soal'}</span>
@@ -185,14 +186,14 @@ export default function ProblemDetailPage() {
         </div>
 
         {loading ? (
-          <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center text-xs text-slate-400">
+          <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400 dark:text-slate-500">
             Memuat pembahasan soal...
           </div>
         ) : !problem ? (
-          <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-3">
-            <p className="text-sm font-bold text-slate-800">Soal tidak ditemukan</p>
-            <p className="text-xs text-slate-500">Soal dengan ID "{problemId}" mungkin telah dihapus atau dipindahkan.</p>
-            <a href="/arsip" className="inline-block text-xs font-bold text-blue-600 hover:underline pt-2">
+          <div className="bg-white dark:bg-slate-900 p-12 rounded-2xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
+            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Soal tidak ditemukan</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Soal dengan ID "{problemId}" mungkin telah dihapus atau dipindahkan.</p>
+            <a href="/arsip" className="inline-block text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline pt-2">
               Kembali ke Daftar Arsip →
             </a>
           </div>
@@ -200,21 +201,21 @@ export default function ProblemDetailPage() {
           <div className="space-y-6">
             
             {/* KARTU DOKUMEN SOAL */}
-            <div className="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm space-y-6">
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-6">
               
               {/* Header Metadata */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+                  <span className="text-xs font-black text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/80 px-2.5 py-1 rounded-lg border border-blue-100 dark:border-blue-900">
                     {problem.competition} {problem.year}
                   </span>
-                  <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
                     {problem.level}
                   </span>
                 </div>
                 
-                <div className="flex items-center gap-3 text-xs text-slate-400">
-                  <span className="font-semibold text-slate-600">Topik: {problem.topic}</span>
+                <div className="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">Topik: {problem.topic}</span>
                   <span>•</span>
                   <span className="font-mono">ID: {problem.id}</span>
                 </div>
@@ -222,8 +223,8 @@ export default function ProblemDetailPage() {
 
               {/* Judul & Pernyataan Soal */}
               <div className="space-y-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pernyataan Soal</span>
-                <div className="text-slate-900 text-base sm:text-lg leading-relaxed whitespace-pre-line">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Pernyataan Soal</span>
+                <div className="text-slate-900 dark:text-slate-100 text-base sm:text-lg leading-relaxed whitespace-pre-line">
                   <MathText text={problem.statement} />
                 </div>
               </div>
@@ -233,7 +234,7 @@ export default function ProblemDetailPage() {
             {/* SEKSI TABULASI SOLUSI (ALA MATHNET MIT) */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <h2 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                   Pembahasan & Solusi ({problem.solutions?.length || 0})
                 </h2>
               </div>
@@ -242,15 +243,15 @@ export default function ProblemDetailPage() {
                 <div className="space-y-4">
                   
                   {/* Tab Selector Buttons */}
-                  <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+                  <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto">
                     {problem.solutions.map((sol, index) => (
                       <button
                         key={sol.id || index}
                         onClick={() => setActiveTab(index)}
                         className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
                           activeTab === index
-                            ? 'bg-slate-900 text-white shadow-sm'
-                            : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/80'
+                            ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-sm'
+                            : 'bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800'
                         }`}
                       >
                         <span>{sol.title || `Solusi ${index + 1}`}</span>
@@ -260,21 +261,21 @@ export default function ProblemDetailPage() {
 
                   {/* Isi Solusi yang Aktif */}
                   {currentSol && (
-                    <div className="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm space-y-6">
+                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm space-y-6">
                       
                       {/* Sub-Header: Penulis & Hasil Akhir */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 text-xs">
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-400 font-medium">Solusi oleh:</span>
-                          <span className="font-bold text-slate-800 bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5">
+                          <span className="text-slate-400 dark:text-slate-500 font-medium">Solusi oleh:</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200 bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900 px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5">
                             <UserIcon />
                             {currentSol.author || 'Tim TheoQED'}
                           </span>
                         </div>
 
                         {currentSol.final_answer && (
-                          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl font-mono text-slate-700">
-                            <span className="text-slate-400 font-sans font-medium text-[11px]">Hasil Akhir:</span>
+                          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl font-mono text-slate-700 dark:text-slate-200">
+                            <span className="text-slate-400 dark:text-slate-500 font-sans font-medium text-[11px]">Hasil Akhir:</span>
                             <strong>
                               <MathText text={currentSol.final_answer.startsWith('$') ? currentSol.final_answer : `$${currentSol.final_answer}$`} />
                             </strong>
@@ -284,40 +285,40 @@ export default function ProblemDetailPage() {
 
                       {/* Ide Ringkas / Hint */}
                       {currentSol.brief && (
-                        <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-700 leading-relaxed">
-                          <span className="font-bold text-slate-900 block mb-1">Ide Ringkas / Gagasan Utama:</span>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                          <span className="font-bold text-slate-900 dark:text-white block mb-1">Ide Ringkas / Gagasan Utama:</span>
                           <MathText text={currentSol.brief} />
                         </div>
                       )}
 
                       {/* Pembahasan Fleksibel (Paragraf & LaTeX) */}
-{currentSol.steps && currentSol.steps.length > 0 ? (
-  <div className="space-y-3 pt-2">
-    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pembahasan:</h4>
-    <div className="space-y-3 text-sm text-slate-800 leading-relaxed">
-      {currentSol.steps.map((paragraph, idx) => (
-        <p key={idx} className="whitespace-pre-line">
-          <MathText text={paragraph} />
-        </p>
-      ))}
-    </div>
-  </div>
-) : (
-  <p className="text-xs text-slate-400 italic">Belum ada penjabaran langkah rinci untuk metode ini.</p>
-)}
+                      {currentSol.steps && currentSol.steps.length > 0 ? (
+                        <div className="space-y-3 pt-2">
+                          <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Pembahasan:</h4>
+                          <div className="space-y-3 text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
+                            {currentSol.steps.map((paragraph, idx) => (
+                              <p key={idx} className="whitespace-pre-line">
+                                <MathText text={paragraph} />
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-400 dark:text-slate-500 italic">Belum ada penjabaran langkah rinci untuk metode ini.</p>
+                      )}
 
                     </div>
                   )}
 
                 </div>
               ) : (
-                <div className="bg-white p-8 sm:p-12 rounded-2xl border border-slate-200/80 text-center space-y-4 shadow-sm">
-                  <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto text-lg font-bold">
+                <div className="bg-white dark:bg-slate-900 p-8 sm:p-12 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 text-center space-y-4 shadow-sm">
+                  <div className="w-10 h-10 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto text-lg font-bold">
                     ?
                   </div>
                   <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-slate-800">Pembahasan Belum Tersedia</h3>
-                    <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Pembahasan Belum Tersedia</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
                       Soal ini belum memiliki langkah penyelesaian. Punya ide atau solusi untuk soal ini? Mari bantu pembaca lain!
                     </p>
                   </div>
@@ -327,7 +328,7 @@ export default function ProblemDetailPage() {
                       href="https://ig.me/m/theoqed.id"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition shadow-sm"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 dark:bg-amber-600 hover:bg-amber-600 dark:hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition shadow-sm"
                     >
                       <span>+ Ajukan Solusi Kamu (ID: {problem.id})</span>
                     </a>
