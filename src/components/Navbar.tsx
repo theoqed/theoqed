@@ -333,127 +333,131 @@ export function Navbar() {
         </div>
       </header>
 
-      {/* MOBILE SIDEBAR DRAWER (OVERLAY & DRAWER SLIDE) */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex">
-          {/* Backdrop Overlay */}
-          <div
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
+      {/* MOBILE SIDEBAR DRAWER WITH SMOOTH ANIMATION */}
+      <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ${isMobileMenuOpen ? 'visible' : 'invisible pointer-events-none'}`}>
+        
+        {/* Backdrop Overlay (Fade in / Fade out) */}
+        <div
+          className={`fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
+            isMobileMenuOpen ? 'opacity-100' : 'opacity-0'
+          }`}
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
 
-          {/* Sidebar Panel Drawer */}
-          <div className="relative flex flex-col w-4/5 max-w-xs bg-white dark:bg-slate-900 h-full p-6 shadow-2xl border-r border-slate-200 dark:border-slate-800 z-10 transition-transform">
-            
-            {/* Header Sidebar Drawer */}
-            <div className="flex items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800">
-              <Link href="/" className="text-xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-0.5">
-                <span className="text-blue-600 dark:text-blue-400">√</span>TheoQED<span className="text-blue-600 dark:text-blue-400">.</span>
-              </Link>
-              <button
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-              >
-                <CloseIcon />
-              </button>
-            </div>
-
-            {/* Menu Navigasi Utama Sidebar */}
-            <nav className="flex-1 py-6 space-y-2 overflow-y-auto">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block px-3 mb-2">
-                Menu Utama
-              </span>
-
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition ${
-                      isActive
-                        ? 'bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                    }`}
-                  >
-                    <span>{link.name}</span>
-                  </Link>
-                );
-              })}
-
-              {/* Tautan Khusus Admin Portal di Mobile jika Pengguna Admin */}
-              {user && isAdmin && (
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block px-3 mb-2">
-                    Administrator
-                  </span>
-                  <Link
-                    href="/admin"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50"
-                  >
-                    <ShieldCheckIcon />
-                    <span>Admin Portal</span>
-                  </Link>
-                </div>
-              )}
-            </nav>
-
-            {/* Account Status Footer Sidebar Mobile */}
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-              {user ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/60 dark:border-slate-800">
-                    {avatarUrl ? (
-                      <img
-                        src={avatarUrl}
-                        alt={fullName || 'Profil'}
-                        className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700"
-                        onError={() => setAvatarUrl('')}
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-black shrink-0">
-                        {getInitials(fullName, user.email)}
-                      </div>
-                    )}
-                    <div className="truncate">
-                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                        {fullName.trim() || 'Pengguna'}
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                        {user.email}
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleLogout}
-                    className="w-full py-2.5 px-4 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-950 text-red-600 dark:text-red-400 text-xs font-bold rounded-2xl transition border border-red-200/60 dark:border-red-900/40 flex items-center justify-center gap-2"
-                  >
-                    <LogOutIcon />
-                    <span>Keluar Akun</span>
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    setAuthMode('login');
-                    resetForm();
-                    setShowAuthModal(true);
-                  }}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-2xl transition shadow-md flex items-center justify-center gap-2"
-                >
-                  <SparklesIcon />
-                  <span>Masuk / Daftar Akun</span>
-                </button>
-              )}
-            </div>
-
+        {/* Sidebar Panel Drawer (Slide in / Slide out) */}
+        <div
+          className={`relative flex flex-col w-4/5 max-w-xs bg-white dark:bg-slate-900 h-full p-6 shadow-2xl border-r border-slate-200 dark:border-slate-800 z-10 transform transition-transform duration-300 ease-in-out ${
+            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          {/* Header Sidebar Drawer */}
+          <div className="flex items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800">
+            <Link href="/" className="text-xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-0.5">
+              <span className="text-blue-600 dark:text-blue-400">√</span>TheoQED<span className="text-blue-600 dark:text-blue-400">.</span>
+            </Link>
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            >
+              <CloseIcon />
+            </button>
           </div>
+
+          {/* Menu Navigasi Utama Sidebar */}
+          <nav className="flex-1 py-6 space-y-2 overflow-y-auto">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block px-3 mb-2">
+              Menu Utama
+            </span>
+
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition ${
+                    isActive
+                      ? 'bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                  }`}
+                >
+                  <span>{link.name}</span>
+                </Link>
+              );
+            })}
+
+            {/* Tautan Khusus Admin Portal di Mobile jika Pengguna Admin */}
+            {user && isAdmin && (
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block px-3 mb-2">
+                  Administrator
+                </span>
+                <Link
+                  href="/admin"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50"
+                >
+                  <ShieldCheckIcon />
+                  <span>Admin Portal</span>
+                </Link>
+              </div>
+            )}
+          </nav>
+
+          {/* Account Status Footer Sidebar Mobile */}
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+            {user ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={fullName || 'Profil'}
+                      className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700"
+                      onError={() => setAvatarUrl('')}
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-black shrink-0">
+                      {getInitials(fullName, user.email)}
+                    </div>
+                  )}
+                  <div className="truncate">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      {fullName.trim() || 'Pengguna'}
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleLogout}
+                  className="w-full py-2.5 px-4 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-950 text-red-600 dark:text-red-400 text-xs font-bold rounded-2xl transition border border-red-200/60 dark:border-red-900/40 flex items-center justify-center gap-2"
+                >
+                  <LogOutIcon />
+                  <span>Keluar Akun</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setAuthMode('login');
+                  resetForm();
+                  setShowAuthModal(true);
+                }}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-2xl transition shadow-md flex items-center justify-center gap-2"
+              >
+                <SparklesIcon />
+                <span>Masuk / Daftar Akun</span>
+              </button>
+            )}
+          </div>
+
         </div>
-      )}
+      </div>
 
       {/* AUTHENTICATION POPUP MODAL */}
       {showAuthModal && (

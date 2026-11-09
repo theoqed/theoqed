@@ -33,7 +33,7 @@ function MathText({ text }: { text?: string }) {
           const formula = part.slice(2, -2);
           try {
             const html = katex.renderToString(formula, { throwOnError: false, displayMode: true, output: 'html' });
-            return <span key={index} className="block my-2 text-center overflow-x-auto [&_.katex-display]:my-0" dangerouslySetInnerHTML={{ __html: html }} />;
+            return <span key={index} className="block my-2 text-center overflow-x-auto overflow-y-hidden py-1.5 [&_.katex-display]:my-0" dangerouslySetInnerHTML={{ __html: html }} />;
           } catch (e) {
             return <code key={index} className="text-red-500 font-mono text-xs block text-center my-2">{part}</code>;
           }

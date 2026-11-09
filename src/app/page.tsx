@@ -83,6 +83,17 @@ function MoonIcon({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
+// --- SVG CUSTOM ICONS UNTUK HERO SECTION ---
+function GraduationCapIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 01-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+    </svg>
+  );
+}
+
+
 // --- KATEX MATH PARSER ---
 function MathText({ text }: { text: string }) {
   if (!text) return null;
@@ -98,7 +109,7 @@ function MathText({ text }: { text: string }) {
             return (
               <span
                 key={index}
-                className="block my-2 text-center overflow-x-auto [&_.katex-display]:my-0"
+                className="block my-2 text-center overflow-x-auto overflow-y-hidden py-1.5 [&_.katex-display]:my-0"
                 dangerouslySetInnerHTML={{ __html: html }}
               />
             );
@@ -186,33 +197,39 @@ export default function HomePage() {
                 Platform bank soal olimpiade matematika (ONMIPA/OSN), modul catatan kuliah interaktif (TheoNotes), serta simulasi Ujian Try Out CBT dengan sistem pembahasan lengkap.
               </p>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-2">
-                <Link
-                  href="/tryout"
-                  className="px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg shadow-indigo-500/20 transition flex items-center gap-2 group"
-                >
-                  <AcademicCapIcon className="w-4 h-4" />
-                  <span>Simulasi Try Out CBT</span>
-                  <ArrowRightIcon className="w-4 h-4 group-hover:translate-x-1 transition" />
-                </Link>
+              {/* CTA BUTTONS GROUP */}
+<div className="flex flex-col sm:flex-row items-center sm:items-start justify-center sm:justify-start gap-3 w-full pt-2">
+  
+  {/* TOMBOL UTAMA (ROW 1 DI MOBILE / TOMBOL PERTAMA DI PC) */}
+  <Link
+    href="/tryout"
+    className="w-full sm:w-auto px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-indigo-500/20 transition flex items-center justify-center gap-2.5 whitespace-nowrap shrink-0"
+  >
+    <GraduationCapIcon className="w-4 h-4" />
+    <span>Simulasi Try Out CBT</span>
+    <ArrowRightIcon className="w-4 h-4" />
+  </Link>
 
-                <Link
-                  href="/arsip"
-                  className="px-6 py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-bold text-xs sm:text-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition flex items-center gap-2"
-                >
-                  <FolderIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>Bank Soal</span>
-                </Link>
+  {/* TOMBOL SEKUNDER (GRID 2 KOLOM DI MOBILE / FLEX BERJAJAR DI PC) */}
+  <div className="grid grid-cols-2 sm:flex sm:flex-row items-center gap-3 w-full sm:w-auto">
+    <Link
+      href="/arsip"
+      className="w-full sm:w-auto px-5 py-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold text-sm rounded-2xl shadow-sm transition flex items-center justify-center gap-2 whitespace-nowrap shrink-0"
+    >
+      <FolderIcon className="w-4 h-4 text-indigo-500" />
+      <span>Bank Soal</span>
+    </Link>
 
-                <Link
-                  href="/notes"
-                  className="px-6 py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-bold text-xs sm:text-sm rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition flex items-center gap-2"
-                >
-                  <BookOpenIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>TheoNotes</span>
-                </Link>
-              </div>
+    <Link
+      href="/theonotes"
+      className="w-full sm:w-auto px-5 py-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold text-sm rounded-2xl shadow-sm transition flex items-center justify-center gap-2 whitespace-nowrap shrink-0"
+    >
+      <BookOpenIcon className="w-4 h-4 text-indigo-500" />
+      <span>TheoNotes</span>
+    </Link>
+  </div>
+
+</div>
 
               {/* Quick Live Stats */}
               <div className="pt-6 flex items-center justify-center lg:justify-start gap-6 text-xs font-semibold text-slate-500 dark:text-slate-400 border-t border-slate-200/60 dark:border-slate-800/80">
@@ -402,7 +419,7 @@ export default function HomePage() {
               href="/arsip"
               className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5"
             >
-              <span>Semua Soal</span>
+              <span>Semua</span>
               <ArrowRightIcon />
             </Link>
           </div>

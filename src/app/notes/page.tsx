@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 
@@ -12,7 +12,7 @@ interface NoteModule {
   description: string;
   topic?: string;
   created_at?: string;
-  note_chapters?: { id: string }[];
+  note_chapters?: { id: string; parent_id?: string | null }[];
 }
 
 // --- TEMA WARNA & ILUSTRASI VEKTOR MINIMALIS (ASTRONOTES STYLE) ---
@@ -173,6 +173,8 @@ function ArrowRightIcon({ className = "w-4 h-4" }: { className?: string }) {
 }
 
 export default function NotesCatalogPage() {
+  const supabase = createClient();
+
   const [modules, setModules] = useState<NoteModule[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -184,9 +186,10 @@ export default function NotesCatalogPage() {
 
   async function fetchModules() {
     setLoading(true);
+    // Mengambil id dan parent_id dari note_chapters
     const { data } = await supabase
       .from('notes')
-      .select('id, title, slug, description, topic, created_at, note_chapters(id)');
+      .select('id, title, slug, description, topic, created_at, note_chapters(id, parent_id)');
 
     if (data) setModules(data as NoteModule[]);
     setLoading(false);
@@ -276,7 +279,8 @@ export default function NotesCatalogPage() {
           ) : filteredModules.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
               {filteredModules.map((module) => {
-                const chapterCount = module.note_chapters?.length || 0;
+                // HANYA MENGHITUNG BAB UTAMA (yang parent_id-nya null / tidak ada)
+                const mainChapterCount = module.note_chapters?.filter((ch) => !ch.parent_id)?.length || 0;
                 const style = getModuleStyle(module.topic, module.title);
 
                 return (
@@ -306,7 +310,7 @@ export default function NotesCatalogPage() {
                       {/* BADGE HALAMAN / BAB */}
                       <div className="relative z-10">
                         <span className="inline-block text-[10px] font-bold text-white/90 bg-black/25 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
-                          {chapterCount} Bab Pembahasan
+                          {mainChapterCount} Bab Pembahasan
                         </span>
                       </div>
                     </div>

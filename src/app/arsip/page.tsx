@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Problem, Folder } from '@/types';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import Link from 'next/link';
 
 // --- ICONS ---
 function FolderIcon({ className = "w-4 h-4" }: { className?: string }) {
@@ -87,7 +88,7 @@ function MathText({ text }: { text: string }) {
             return (
               <span
                 key={index}
-                className="block my-2 text-center overflow-x-auto [&_.katex-display]:my-0 font-sans"
+                className="block my-2 text-center overflow-x-auto overflow-y-hidden py-1.5 [&_.katex-display]:my-0 font-sans"
                 dangerouslySetInnerHTML={{ __html: html }}
               />
             );
@@ -618,8 +619,6 @@ function ArsipContent() {
                                 {solutionCount > 0 ? (
                                   <a
                                     href={`/problems/${problem.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
                                     className="font-bold text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 bg-blue-100/80 dark:bg-blue-950/80 hover:bg-blue-200/80 dark:hover:bg-blue-900/80 border border-blue-300/60 dark:border-blue-800/60 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl transition inline-flex items-center gap-1 text-[10px] sm:text-xs whitespace-nowrap"
                                   >
                                     <span>Buka Solusi ↗</span>

@@ -112,7 +112,7 @@ function MathText({ text }: { text: string }) {
             return (
               <span
                 key={index}
-                className="block my-2 text-center overflow-x-auto font-sans [&_.katex-display]:my-0"
+                className="block my-2 text-center overflow-x-auto overflow-y-hidden py-1 font-sans [&_.katex-display]:my-0"
                 dangerouslySetInnerHTML={{ __html: html }}
               />
             );
@@ -184,7 +184,6 @@ interface TryoutItem {
   problem_configs: ProblemConfigItem[];
 }
 
-// HELPER PARSER SOLUSI
 function extractProblemSolutions(problem: any): SolutionObj[] {
   if (!problem) return [];
 
@@ -239,7 +238,7 @@ function ResultContent() {
   const [loading, setLoading] = useState(true);
 
   // State Filter Pembahasan
-  const [filterStatus, setFilterStatus] = useState<'SEMUA' | 'BENAR' | 'SALAH' | 'RAGU'>('SEMUA');
+  const [filterStatus, setFilterStatus] = useState<'SEMUA' | 'BENAR' | 'SALAH' | 'KOSONG' | 'RAGU'>('SEMUA');
   const [expandedSolutionId, setExpandedSolutionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -252,7 +251,6 @@ function ResultContent() {
         return;
       }
 
-      // 1. Fetch Data Tryout
       let { data: tryoutData } = await supabase
         .from('tryouts')
         .select('*')
@@ -274,7 +272,6 @@ function ResultContent() {
         return;
       }
 
-      // 2. Fetch Data Submission
       let subQuery = supabase.from('tryout_submissions').select('*');
       if (submissionId && submissionId !== 'latest') {
         subQuery = subQuery.eq('id', submissionId);
@@ -294,7 +291,6 @@ function ResultContent() {
         return;
       }
 
-      // 3. Fetch Profil Identitas Peserta
       const { data: profile } = await supabase
         .from('profiles')
         .select('full_name, name, email, avatar_url')
@@ -305,7 +301,6 @@ function ResultContent() {
       let resolvedEmail = profile?.email || '';
       let resolvedAvatar = profile?.avatar_url || '';
 
-      // Fallback ke session user metadata jika peserta adalah user aktif
       if (session.user.id === subData.user_id) {
         resolvedName =
           resolvedName ||
@@ -327,7 +322,6 @@ function ResultContent() {
         avatar: resolvedAvatar,
       });
 
-      // 4. Safe Parse Configs & Fetch Detail Soal
       let configs: ProblemConfigItem[] = [];
       if (typeof tryoutData.problem_configs === 'string') {
         try { configs = JSON.parse(tryoutData.problem_configs); } catch (e) { configs = []; }
@@ -391,7 +385,6 @@ function ResultContent() {
     );
   }
 
-  // HITUNG STATISTIK UTAMA
   let correctCount = 0;
   let wrongCount = 0;
   let unansweredCount = 0;
@@ -436,81 +429,76 @@ function ResultContent() {
         <main className="max-w-5xl mx-auto px-4 sm:px-6 my-10 space-y-8">
           
           {/* HEADER JUDUL RAPOR + KARTU NAMA PESERTA */}
-          <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
             
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              
-              {/* IDENTITAS PESERTA & RAPOR */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 inline-flex items-center gap-1.5">
-                    <CheckIcon className="w-3.5 h-3.5" />
-                    <span>Selesai Dikerjakan</span>
-                  </span>
-                  <span className="text-xs text-slate-400 font-medium">
-                    {new Date(submission.created_at).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}
-                  </span>
-                </div>
-
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                  Rapor Hasil Try Out: {tryout.title}
-                </h1>
-
-                {/* BADGE NAMA PESERTA */}
-                {participant && (
-                  <div className="pt-2 flex items-center gap-3">
-                    {participant.avatar ? (
-                      <img src={participant.avatar} alt="Avatar" className="w-10 h-10 rounded-2xl object-cover shrink-0 border border-slate-200 dark:border-slate-800" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-black text-xs flex items-center justify-center shrink-0 border border-indigo-200/80 dark:border-indigo-900">
-                        {getInitials(participant.name)}
-                      </div>
-                    )}
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 text-xs text-slate-400 font-bold uppercase tracking-wider">
-                        <UserIcon className="w-3.5 h-3.5 text-indigo-500" />
-                        <span>Nama Peserta Ujian:</span>
-                      </div>
-                      <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                        {participant.name}
-                      </div>
-                      {participant.email && (
-                        <div className="text-xs text-slate-400 truncate">
-                          {participant.email}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+            {/* TOP BAR: BADGE TANGGAL DI KIRI | TOMBOL AKSI 1 BARIS DI KANAN */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 inline-flex items-center gap-1.5">
+                  <CheckIcon className="w-3.5 h-3.5" />
+                  <span>Selesai Dikerjakan</span>
+                </span>
+                <span className="text-xs text-slate-400 font-medium">
+                  {new Date(submission.created_at).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}
+                </span>
               </div>
 
-              {/* ACTION BUTTONS */}
-              <div className="flex items-center gap-2.5 self-start md:self-center">
+              {/* TOMBOL AKSI DENGAN WHITESPACE-NOWRAP DAN SHRINK-0 */}
+              <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
                 <Link
                   href={`/tryout/${tryout.slug || tryout.id}`}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl transition flex items-center gap-1.5"
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shrink-0"
                 >
                   <RefreshIcon className="w-3.5 h-3.5" />
                   <span>Ulangi Try Out</span>
                 </Link>
                 <Link
                   href="/tryout"
-                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5"
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5 whitespace-nowrap shrink-0"
                 >
                   <GridIcon className="w-3.5 h-3.5" />
                   <span>Katalog Try Out</span>
                 </Link>
               </div>
-
             </div>
+
+            {/* MIDDLE: JUDUL UTAMA FULL-WIDTH (DAPAT MEMANJANG BEBAS) */}
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-snug">
+              Rapor Hasil Try Out: {tryout.title}
+            </h1>
+
+            {/* BOTTOM: INFO PESERTA UJIAN */}
+            {participant && (
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-3">
+                {participant.avatar ? (
+                  <img src={participant.avatar} alt="Avatar" className="w-10 h-10 rounded-2xl object-cover shrink-0 border border-slate-200 dark:border-slate-800" />
+                ) : (
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-black text-xs flex items-center justify-center shrink-0 border border-indigo-200/80 dark:border-indigo-900">
+                    {getInitials(participant.name)}
+                  </div>
+                )}
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-400 font-bold uppercase tracking-wider">
+                    <UserIcon className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Nama Peserta Ujian:</span>
+                  </div>
+                  <div className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                    {participant.name}
+                  </div>
+                  {participant.email && (
+                    <div className="text-xs text-slate-400 truncate">
+                      {participant.email}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
           </div>
 
           {/* KARTU STATISTIK UTAMA */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            
-            {/* Total Skor */}
             <div className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white p-6 rounded-3xl shadow-lg flex flex-col justify-between space-y-2">
               <span className="text-[11px] font-bold uppercase tracking-wider opacity-80">Skor Total Perolehan</span>
               <div className="flex items-baseline gap-1">
@@ -520,7 +508,6 @@ function ResultContent() {
               <span className="text-[10px] opacity-75">Akurasi Soal Benar: {accuracy}%</span>
             </div>
 
-            {/* Waktu Pengerjaan */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-2">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                 <ClockIcon className="w-3.5 h-3.5 text-indigo-500" />
@@ -532,7 +519,6 @@ function ResultContent() {
               <span className="text-[10px] text-slate-400">Dari total {tryout.duration_minutes || 60} menit</span>
             </div>
 
-            {/* Benar vs Salah */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-2">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Statistik Jawaban</span>
               <div className="flex items-center gap-3 text-sm font-black">
@@ -548,7 +534,6 @@ function ResultContent() {
               <span className="text-[10px] text-slate-400">{unansweredCount} Soal tidak dijawab</span>
             </div>
 
-            {/* Total Soal */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-2">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Jumlah Soal</span>
               <span className="text-2xl font-black text-slate-900 dark:text-white">
@@ -556,7 +541,6 @@ function ResultContent() {
               </span>
               <span className="text-[10px] text-slate-400">Terbagi dalam {Object.keys(sectionStats).length} seksi</span>
             </div>
-
           </div>
 
           {/* BREAKDOWN RINCIAN PER SEKSI */}
@@ -596,19 +580,19 @@ function ResultContent() {
                 </p>
               </div>
 
-              {/* FILTER TAB PEMBAHASAN */}
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl text-xs font-bold">
-                {(['SEMUA', 'BENAR', 'SALAH', 'RAGU'] as const).map((st) => (
+              {/* FILTER TAB PEMBAHASAN (SCROLLBAR TERSEMBUNYI TOTAL) */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl text-xs font-bold overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {(['SEMUA', 'BENAR', 'SALAH', 'KOSONG', 'RAGU'] as const).map((st) => (
                   <button
                     key={st}
                     onClick={() => setFilterStatus(st)}
-                    className={`px-3 py-1.5 rounded-lg transition ${
+                    className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap ${
                       filterStatus === st
                         ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                     }`}
                   >
-                    {st === 'SEMUA' ? 'Semua' : st === 'BENAR' ? 'Benar' : st === 'SALAH' ? 'Salah' : 'Ragu-Ragu'}
+                    {st === 'SEMUA' ? 'Semua' : st === 'BENAR' ? 'Benar' : st === 'SALAH' ? 'Salah' : st === 'KOSONG' ? 'Kosong' : 'Ragu-Ragu'}
                   </button>
                 ))}
               </div>
@@ -631,18 +615,81 @@ function ResultContent() {
                 // Apply Filter Status
                 if (filterStatus === 'BENAR' && !isCorrect) return null;
                 if (filterStatus === 'SALAH' && (isCorrect || !userAns)) return null;
+                if (filterStatus === 'KOSONG' && userAns) return null;
                 if (filterStatus === 'RAGU' && !isDoubt) return null;
 
                 const solutionsList = extractProblemSolutions(problemDetail);
+
+                const isLongText = ['A', 'B', 'C', 'D', 'E'].some((opt) => {
+                  const txt = options[opt] || '';
+                  return txt.length > 35 || txt.includes('\n') || txt.includes('$$');
+                });
+
+                const renderCard = (opt: string) => {
+                  const optText = options[opt];
+                  if (!optText && !options.A) return null;
+
+                  const isUserChoice = userAns === opt;
+                  const isCorrectChoice = correctKey === opt && cfg.scoring_type !== 'weighted_tkp';
+                  const tkpWeight = cfg.option_weights?.[opt];
+
+                  let cardBorder = "border-slate-200/70 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50";
+                  if (isUserChoice && isCorrectChoice) {
+                    cardBorder = "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 font-bold";
+                  } else if (isUserChoice && !isCorrectChoice && cfg.scoring_type !== 'weighted_tkp') {
+                    cardBorder = "border-red-400 bg-red-50/60 dark:bg-red-950/50 text-red-900 dark:text-red-200";
+                  } else if (isCorrectChoice) {
+                    cardBorder = "border-emerald-300 dark:border-emerald-900 bg-emerald-50/30 dark:bg-emerald-950/20";
+                  }
+
+                  return (
+                    <div
+                      key={opt}
+                      className={`p-3 rounded-2xl border text-xs sm:text-sm flex items-center justify-between gap-3 transition ${cardBorder}`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`w-7 h-7 rounded-lg font-black text-[11px] flex items-center justify-center shrink-0 border ${
+                          isUserChoice
+                            ? isCorrectChoice ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-red-500 text-white border-red-500'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+                        }`}>
+                          {opt}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <MathText text={optText || `Opsi ${opt}`} />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isUserChoice && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900">
+                            Pilihanmu
+                          </span>
+                        )}
+                        {isCorrectChoice && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-600 text-white">
+                            Kunci Jawaban
+                          </span>
+                        )}
+                        {cfg.scoring_type === 'weighted_tkp' && tkpWeight !== undefined && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900">
+                            {tkpWeight} Poin
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                };
 
                 return (
                   <div
                     key={probId}
                     className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4"
                   >
-                    {/* Header Item Soal */}
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 gap-2 flex-wrap">
-                      <div className="flex items-center gap-2">
+                    {/* HEADER ITEM SOAL (RESPONSIF 2 BARIS PADAT DI MOBILE, KIRI-KANAN DI PC) */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 gap-2">
+                      {/* BARIS 1 (MOBILE) / KIRI (PC): BADGES INFO SOAL */}
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950 px-2.5 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900">
                           Soal #{idx + 1}
                         </span>
@@ -657,6 +704,7 @@ function ResultContent() {
                         )}
                       </div>
 
+                      {/* BARIS 2 (MOBILE) / KANAN (PC): POIN & STATUS JAWABAN */}
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-slate-500">
                           Poin: <strong className="text-indigo-600 dark:text-indigo-400">+{detailScore?.score || 0}</strong>
@@ -679,65 +727,22 @@ function ResultContent() {
                       <MathText text={problemDetail?.statement || 'Pernyataan soal tidak ditemukan.'} />
                     </div>
 
-                    {/* OPSI JAWABAN & PERBANDINGAN */}
+                    {/* OPSI JAWABAN & PERBANDINGAN LAYOUT */}
                     {isPG ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                        {['A', 'B', 'C', 'D', 'E'].map((opt) => {
-                          const optText = options[opt];
-                          if (!optText && !options.A) return null;
-
-                          const isUserChoice = userAns === opt;
-                          const isCorrectChoice = correctKey === opt && cfg.scoring_type !== 'weighted_tkp';
-                          const tkpWeight = cfg.option_weights?.[opt];
-
-                          let cardBorder = "border-slate-200/70 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50";
-                          if (isUserChoice && isCorrectChoice) {
-                            cardBorder = "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 font-bold";
-                          } else if (isUserChoice && !isCorrectChoice && cfg.scoring_type !== 'weighted_tkp') {
-                            cardBorder = "border-red-400 bg-red-50/60 dark:bg-red-950/50 text-red-900 dark:text-red-200";
-                          } else if (isCorrectChoice) {
-                            cardBorder = "border-emerald-300 dark:border-emerald-900 bg-emerald-50/30 dark:bg-emerald-950/20";
-                          }
-
-                          return (
-                            <div
-                              key={opt}
-                              className={`p-3 rounded-2xl border text-xs sm:text-sm flex items-center justify-between gap-3 transition ${cardBorder}`}
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <span className={`w-7 h-7 rounded-lg font-black text-[11px] flex items-center justify-center shrink-0 border ${
-                                  isUserChoice
-                                    ? isCorrectChoice ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-red-500 text-white border-red-500'
-                                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800'
-                                }`}>
-                                  {opt}
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                  <MathText text={optText || `Opsi ${opt}`} />
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {isUserChoice && (
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900">
-                                    Pilihanmu
-                                  </span>
-                                )}
-                                {isCorrectChoice && (
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-600 text-white">
-                                    Kunci Jawaban
-                                  </span>
-                                )}
-                                {cfg.scoring_type === 'weighted_tkp' && tkpWeight !== undefined && (
-                                  <span className="text-[10px] font-black px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900">
-                                    {tkpWeight} Poin
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      isLongText ? (
+                        <div className="space-y-2 pt-2">
+                          {['A', 'B', 'C', 'D', 'E'].map(renderCard)}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                          <div className="space-y-2">
+                            {['A', 'B', 'C'].map(renderCard)}
+                          </div>
+                          <div className="space-y-2">
+                            {['D', 'E'].map(renderCard)}
+                          </div>
+                        </div>
+                      )
                     ) : (
                       <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs space-y-2">
                         <div className="flex items-center justify-between">

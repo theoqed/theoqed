@@ -50,7 +50,7 @@ function KeyIcon({ className = "" }: { className?: string }) {
 function LightbulbIcon({ className = "" }: { className?: string }) {
   return (
     <svg className={`w-4 h-4 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 01-2 2h-4a2 2 0 01-2-2v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
     </svg>
   );
 }
@@ -63,16 +63,12 @@ function InstagramIcon({ className = "" }: { className?: string }) {
   );
 }
 
-// --- KATEX MATH PARSER ---
+// --- KATEX MATH PARSER (FIXED) ---
 function MathText({ text }: { text?: string }) {
   if (!text) return null;
 
-  const hasMathDelimiter = text.includes('$');
-  const formattedText = !hasMathDelimiter && text.trim().length > 0 && !text.includes(' ') 
-    ? `$${text.trim()}$` 
-    : text;
-
-  const parts = formattedText.split(/(\$\$[\s\S]+?\$\$|\$[^$]+\$)/g);
+  // Split teks langsung berdasarkan delimiter $ tanpa auto-wrap sembarangan
+  const parts = text.split(/(\$\$[\s\S]+?\$\$|\$[^$]+\$)/g);
 
   return (
     <span className="leading-relaxed font-serif">
@@ -286,7 +282,7 @@ export default function ProblemDetailPage({ params }: { params: Promise<{ id: st
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
                     Pernyataan Soal
@@ -299,6 +295,63 @@ export default function ProblemDetailPage({ params }: { params: Promise<{ id: st
                 <div className="text-slate-900 dark:text-slate-100 text-base sm:text-lg leading-relaxed whitespace-pre-line font-normal bg-slate-50/50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/80">
                   <MathText text={problem.statement} />
                 </div>
+
+                {/* PILIHAN JAWABAN (UNTUK SOAL PILIHAN GANDA) */}
+                {problem.options && (problem.problem_type === 'multiple_choice' || Object.keys(problem.options).length > 0) && (
+                  <div className="pt-3 space-y-3">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                      Pilihan Jawaban
+                    </span>
+
+                    {(() => {
+                      let parsedOptions: Record<string, string> = {};
+                      if (typeof problem.options === 'string') {
+                        try { parsedOptions = JSON.parse(problem.options); } catch (e) { parsedOptions = {}; }
+                      } else if (typeof problem.options === 'object' && problem.options !== null) {
+                        parsedOptions = problem.options as Record<string, string>;
+                      }
+
+                      const isLongText = ['A', 'B', 'C', 'D', 'E'].some((opt) => {
+                        const txt = parsedOptions[opt] || '';
+                        return txt.length > 35 || txt.includes('\n') || txt.includes('$$');
+                      });
+
+                      const renderOptionCard = (opt: string) => {
+                        const optText = parsedOptions[opt];
+                        if (!optText && !parsedOptions.A) return null;
+
+                        return (
+                          <div
+                            key={opt}
+                            className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-950/40 text-slate-900 dark:text-slate-100 text-xs sm:text-sm flex items-center gap-3.5 transition hover:border-slate-300 dark:hover:border-slate-700"
+                          >
+                            <span className="w-8 h-8 rounded-xl font-black text-xs flex items-center justify-center shrink-0 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 shadow-sm">
+                              {opt}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <MathText text={optText || `Opsi ${opt}`} />
+                            </div>
+                          </div>
+                        );
+                      };
+
+                      return isLongText ? (
+                        <div className="space-y-2.5">
+                          {['A', 'B', 'C', 'D', 'E'].map(renderOptionCard)}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div className="space-y-2.5">
+                            {['A', 'B', 'C'].map(renderOptionCard)}
+                          </div>
+                          <div className="space-y-2.5">
+                            {['D', 'E'].map(renderOptionCard)}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
 
             </div>
@@ -419,7 +472,6 @@ export default function ProblemDetailPage({ params }: { params: Promise<{ id: st
                   <p>Pembahasan resmi untuk soal ini belum tersedia.</p>
                   <p>Anda dapat mengajukan solusi melalui tombol "Ajukan Solusi +" di atas.</p>
                   <p>Solusi anda akan dipertimbangkan dahulu sebelum dirilis di website ini.</p>
-                 
                 </div>
               )}
 

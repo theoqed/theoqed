@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import katex from 'katex';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { AdminNavbar } from '@/components/AdminNavbar';
 import { Footer } from '@/components/Footer';
 
@@ -27,7 +27,7 @@ interface NoteChapter {
 }
 
 // --- KATEX MATH PARSER UNTUK LIVE PREVIEW ---
-function MathText({ text }: { text: string }) {
+function MathText({ text }: { text?: string }) {
   if (!text) return <span className="text-slate-400 italic text-xs">Belum ada konten...</span>;
   const parts = text.split(/(\$\$[\s\S]+?\$\$|\$[^$]+\$)/g);
 
@@ -98,6 +98,8 @@ function ArrowLeftIcon({ className = "w-4 h-4" }: { className?: string }) {
 }
 
 export default function AdminNotesPage() {
+  const supabase = createClient();
+
   const [modules, setModules] = useState<NoteModule[]>([]);
   const [selectedModule, setSelectedModule] = useState<NoteModule | null>(null);
   const [chapters, setChapters] = useState<NoteChapter[]>([]);
@@ -158,8 +160,8 @@ export default function AdminNotesPage() {
     if (mod) {
       setEditingModuleId(mod.id);
       setModuleForm({
-        title: mod.title,
-        slug: mod.slug,
+        title: mod.title || '',
+        slug: mod.slug || '',
         topic: mod.topic || 'Aljabar',
         description: mod.description || '',
       });
@@ -176,28 +178,37 @@ export default function AdminNotesPage() {
 
     const generatedSlug = moduleForm.slug.trim() || moduleForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
+    const updatePayload = {
+      title: moduleForm.title,
+      slug: generatedSlug,
+      topic: moduleForm.topic,
+      description: moduleForm.description,
+    };
+
     let resError = null;
 
     if (editingModuleId) {
-      const { error } = await supabase
+      // Menggunakan .select() untuk memastikan data ter-update dan mengkonfirmasi RLS
+      const { data, error } = await supabase
         .from('notes')
-        .update({
-          title: moduleForm.title,
-          slug: generatedSlug,
-          topic: moduleForm.topic,
-          description: moduleForm.description,
-        })
-        .eq('id', editingModuleId);
+        .update(updatePayload)
+        .eq('id', editingModuleId)
+        .select();
+
       resError = error;
+
+      if (!error && (!data || data.length === 0)) {
+        alert('Gagal memperbarui modul: Tidak ada baris yang ter-update. Pastikan Anda sudah login sebagai Admin!');
+        setSaving(false);
+        return;
+      }
+
+      // Jika modul yang diedit sedang dibuka, update state selectedModule
+      if (data && data[0] && selectedModule?.id === editingModuleId) {
+        setSelectedModule((prev) => (prev ? { ...prev, ...data[0] } : null));
+      }
     } else {
-      const { error } = await supabase.from('notes').insert([
-        {
-          title: moduleForm.title,
-          slug: generatedSlug,
-          topic: moduleForm.topic,
-          description: moduleForm.description,
-        },
-      ]);
+      const { error } = await supabase.from('notes').insert([updatePayload]);
       resError = error;
     }
 
@@ -209,7 +220,7 @@ export default function AdminNotesPage() {
     }
 
     setIsModuleModalOpen(false);
-    fetchModules();
+    await fetchModules();
   };
 
   const handleDeleteModule = async (id: string, e: React.MouseEvent) => {
@@ -444,6 +455,13 @@ export default function AdminNotesPage() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleOpenModuleModal(selectedModule)}
+                    className="px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-slate-200/60 dark:border-slate-700/60"
+                  >
+                    <EditIcon className="w-3.5 h-3.5" />
+                    <span>Edit Metadata Modul</span>
+                  </button>
                   <button
                     onClick={() => handleOpenChapterModal()}
                     className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-md"

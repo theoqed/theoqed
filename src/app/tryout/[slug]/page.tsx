@@ -397,26 +397,32 @@ export default function TryoutDetailPage() {
             </div>
 
             {/* ACTION BUTTON */}
-            <div className="pt-2">
-              {user ? (
-                <button
-                  onClick={handleStartExam}
-                  disabled={totalProblems === 0}
-                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-extrabold text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 group"
-                >
-                  <span>Mulai Pengerjaan Ujian Sekarang</span>
-                  <ArrowRightIcon className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </button>
-              ) : (
-                <button
-                  onClick={handleStartExam}
-                  className="w-full py-4 bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2"
-                >
-                  <LockClosedIcon className="w-4 h-4" />
-                  <span>Silakan Login Terlebih Dahulu untuk Mulai Try Out</span>
-                </button>
-              )}
-            </div>
+<div className="pt-2">
+  {user ? (
+    <button
+      onClick={handleStartExam}
+      disabled={totalProblems === 0}
+      className="w-full py-3.5 sm:py-4 px-4 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-2xl shadow-md hover:shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 group"
+    >
+      <span>
+        <span className="inline sm:hidden">Mulai Ujian Sekarang</span>
+        <span className="hidden sm:inline">Mulai Pengerjaan Ujian Sekarang</span>
+      </span>
+      <ArrowRightIcon className="w-4 h-4 shrink-0 group-hover:translate-x-1 transition-transform" />
+    </button>
+  ) : (
+    <button
+      onClick={handleStartExam}
+      className="w-full py-3.5 sm:py-4 px-4 bg-amber-600 hover:bg-amber-500 active:scale-[0.99] text-white font-bold text-xs sm:text-sm rounded-2xl shadow-md hover:shadow-amber-500/20 transition-all flex items-center justify-center gap-2 group"
+    >
+      <LockClosedIcon className="w-4 h-4 shrink-0 group-hover:scale-110 transition-transform" />
+      <span>
+        <span className="inline sm:hidden">Login untuk Mulai Try Out</span>
+        <span className="hidden sm:inline">Silakan Login Terlebih Dahulu untuk Mulai Try Out</span>
+      </span>
+    </button>
+  )}
+</div>
 
           </div>
 

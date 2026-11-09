@@ -84,7 +84,7 @@ function MathText({ text }: { text: string }) {
             return (
               <span
                 key={index}
-                className="block my-2 text-center overflow-x-auto font-sans [&_.katex-display]:my-0"
+                className="block my-2 text-center overflow-x-auto overflow-y-hidden py-1 font-sans [&_.katex-display]:my-0"
                 dangerouslySetInnerHTML={{ __html: html }}
               />
             );
@@ -150,14 +150,12 @@ export default function ExamPage() {
 
   const [loading, setLoading] = useState(true);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [showGridMobile, setShowGridMobile] = useState(false);
 
-  // Synchronous Locks & Refs untuk mencegah Double Submission & Stale Time
+  // Synchronous Locks & Refs
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isSubmittingRef = useRef(false);
   const timeLeftRef = useRef(0);
 
-  // Update ref setiap kali timeLeft berubah
   useEffect(() => {
     timeLeftRef.current = timeLeft;
   }, [timeLeft]);
@@ -297,9 +295,7 @@ export default function ExamPage() {
     }));
   };
 
-  // SUBMIT HANDLER SINKRONIS (BEBAS DOUBLE SUBMIT & TERPAKAI PERMANEN FULL JIKA HABIS)
   const handleFinalSubmit = async (isAuto = false) => {
-    // 1. Lock Sinkronis Mencegah Double Submission
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
 
@@ -338,18 +334,14 @@ export default function ExamPage() {
 
     const totalDurationSeconds = (tryout?.duration_minutes || 60) * 60;
     
-    // 2. Kalkulasi Durasi Terpakai yang Akurat
     let timeSpentSeconds = 0;
     if (isAuto) {
-      // Jika waktu habis (autosubmit), waktu terpakai = total durasi ujian penuh
       timeSpentSeconds = totalDurationSeconds;
     } else {
-      // Jika diselesaikan manual oleh peserta
       const currentRemaining = timeLeftRef.current;
       timeSpentSeconds = Math.max(1, totalDurationSeconds - currentRemaining);
     }
 
-    // 3. Simpan Hasil ke Supabase
     const { data: subData, error } = await supabase
       .from('tryout_submissions')
       .insert([
@@ -410,38 +402,41 @@ export default function ExamPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans flex flex-col justify-between select-none transition-colors duration-200">
       
-      {/* TOP BAR FOCUS MODE */}
-      <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-6 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="font-black text-lg text-indigo-600 dark:text-indigo-400 tracking-tight flex items-center gap-1">
+      {/* TOP BAR FOCUS MODE (RESPONSIF MOBILE & DESKTOP) */}
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 shadow-sm">
+        
+        {/* BRAND & JUDUL PAKET (RESPONSIF PENUH) */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          <div className="font-black text-base sm:text-lg text-indigo-600 dark:text-indigo-400 tracking-tight flex items-center gap-1 shrink-0">
             <span>TheoQED</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900 uppercase">
+            <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900 uppercase">
               CBT
             </span>
           </div>
-          <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
-          <h1 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate max-w-[200px] sm:max-w-xs">
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 shrink-0 hidden sm:block" />
+          <h1 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate min-w-0 max-w-[150px] xs:max-w-[220px] sm:max-w-md md:max-w-lg lg:max-w-xl">
             {tryout.title}
           </h1>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className={`px-3 py-1.5 rounded-xl font-mono text-xs sm:text-sm font-black flex items-center gap-2 border shadow-inner ${
+        {/* TIMER & SELESAI */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl font-mono text-xs sm:text-sm font-black flex items-center gap-1.5 border shadow-inner ${
             timeLeft < 300 
               ? 'bg-red-50 dark:bg-red-950/80 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900 animate-pulse'
               : 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900'
           }`}>
-            <ClockIcon className="w-4 h-4 text-indigo-500 shrink-0" />
+            <ClockIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500 shrink-0" />
             <span>{formatTime(timeLeft)}</span>
           </div>
 
           <button
             onClick={() => setShowSubmitModal(true)}
-            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-1.5"
+            className="px-3 sm:px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-1 shrink-0"
           >
-            <CheckIcon className="w-4 h-4" />
+            <CheckIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span className="hidden sm:inline">Selesaikan Ujian</span>
-            <span className="sm:hidden">Selesai</span>
+            <span className="sm:hidden text-[11px]">Selesai</span>
           </button>
         </div>
       </header>
@@ -453,29 +448,22 @@ export default function ExamPage() {
         <main className="lg:col-span-3 flex flex-col justify-between bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-8 shadow-sm min-h-[550px]">
           
           <div className="space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-              <div className="flex items-center gap-2.5">
-                <span className="px-3 py-1 rounded-xl bg-indigo-600 text-white font-black text-xs">
-                  Soal No. {currentIndex + 1}
-                </span>
-                <span className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wider">
-                  Seksi: {currentProblem.config.section || 'UMUM'}
-                </span>
-              </div>
-
-              <button
-                onClick={() => setShowGridMobile(!showGridMobile)}
-                className="lg:hidden px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-xs font-bold rounded-xl flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
-              >
-                <GridIcon className="w-3.5 h-3.5 text-indigo-500" />
-                <span>{showGridMobile ? 'Tutup Kisi' : 'Daftar Soal'}</span>
-              </button>
+            {/* HEADER SOAL */}
+            <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <span className="px-3 py-1 rounded-xl bg-indigo-600 text-white font-black text-xs">
+                Soal No. {currentIndex + 1}
+              </span>
+              <span className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wider">
+                Seksi: {currentProblem.config.section || 'UMUM'}
+              </span>
             </div>
 
+            {/* STATEMENT SOAL */}
             <div className="text-slate-800 dark:text-slate-100 text-sm sm:text-base leading-relaxed whitespace-pre-line py-2">
               <MathText text={currentProblem.detail.statement} />
             </div>
 
+            {/* OPSI JAWABAN */}
             <div className="pt-3 space-y-3">
               {isPG ? (
                 ['A', 'B', 'C', 'D', 'E'].map((opt) => {
@@ -524,53 +512,59 @@ export default function ExamPage() {
             </div>
           </div>
 
-          <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 mt-8">
+          {/* BAR TOMBOL AKSI 1-BARIS RAPI PADA MOBILE */}
+          <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5 sm:gap-3 mt-8">
+            {/* Tombol Sebelumnya */}
             <button
               onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
               disabled={currentIndex === 0}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition disabled:opacity-40 flex items-center gap-1.5"
+              className="flex-1 sm:flex-none px-2.5 sm:px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition disabled:opacity-40 flex items-center justify-center gap-1 sm:gap-1.5"
             >
-              <ArrowLeftIcon />
-              <span>Soal Sebelumnya</span>
+              <ArrowLeftIcon className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden xs:inline">Sebelumnya</span>
+              <span className="xs:hidden">Prev</span>
             </button>
 
-            <button
-              onClick={() => handleToggleDoubtful(currentProbId)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 border ${
-                doubtfuls[currentProbId]
-                  ? 'bg-amber-500 text-white border-amber-600 shadow'
-                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/60 hover:bg-amber-100'
-              }`}
-            >
-              {doubtfuls[currentProbId] ? (
-                <>
-                  <CheckSquareIcon />
-                  <span>Ragu-Ragu (Ditandai)</span>
-                </>
-              ) : (
-                <>
-                  <SquareIcon />
-                  <span>Tandai Ragu-Ragu</span>
-                </>
-              )}
-            </button>
+            {/* Tombol Ragu-Ragu */}
+<button
+  onClick={() => handleToggleDoubtful(currentProbId)}
+  className={`flex-1 sm:flex-none px-2 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 sm:gap-2 border whitespace-nowrap ${
+    doubtfuls[currentProbId]
+      ? 'bg-amber-500 text-white border-amber-600 shadow'
+      : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/60 hover:bg-amber-100'
+  }`}
+>
+  {doubtfuls[currentProbId] ? (
+    <>
+      <CheckSquareIcon className="w-3.5 h-3.5 shrink-0" />
+      <span className="hidden sm:inline">Ragu-Ragu (Ditandai)</span>
+      <span className="sm:hidden">Ragu (✓)</span>
+    </>
+  ) : (
+    <>
+      <SquareIcon className="w-3.5 h-3.5 shrink-0" />
+      <span className="hidden sm:inline">Tandai Ragu-Ragu</span>
+      <span className="sm:hidden">Ragu</span>
+    </>
+  )}
+</button>
 
+            {/* Tombol Berikutnya */}
             <button
               onClick={() => setCurrentIndex((prev) => Math.min(examProblems.length - 1, prev + 1))}
               disabled={currentIndex === examProblems.length - 1}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow transition disabled:opacity-40 flex items-center gap-1.5"
+              className="flex-1 sm:flex-none px-2.5 sm:px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow transition disabled:opacity-40 flex items-center justify-center gap-1 sm:gap-1.5"
             >
-              <span>Soal Berikutnya</span>
-              <ArrowRightIcon />
+              <span className="hidden xs:inline">Berikutnya</span>
+              <span className="xs:hidden">Next</span>
+              <ArrowRightIcon className="w-3.5 h-3.5 shrink-0" />
             </button>
           </div>
 
         </main>
 
-        {/* SIDEBAR NAVIGATION GRID */}
-        <aside className={`lg:block bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4 h-fit ${
-          showGridMobile ? 'block' : 'hidden'
-        }`}>
+        {/* SIDEBAR NAVIGASI SOAL (TAMPIL OTOMATIS DI BUKAN MODAL/TOGGLE) */}
+        <aside className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4 h-fit block">
           
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -618,7 +612,7 @@ export default function ExamPage() {
           )}
 
           <div className="p-1.5 max-h-80 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-800 [&::-webkit-scrollbar-thumb]:rounded-full">
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 sm:grid-cols-6 lg:grid-cols-5 gap-2">
               {examProblems.map((prob, idx) => {
                 const secName = (prob.config.section || 'UMUM').toUpperCase();
                 if (selectedSectionFilter !== 'SEMUA' && selectedSectionFilter !== secName) {
@@ -640,10 +634,7 @@ export default function ExamPage() {
                 return (
                   <button
                     key={pId}
-                    onClick={() => {
-                      setCurrentIndex(idx);
-                      setShowGridMobile(false);
-                    }}
+                    onClick={() => setCurrentIndex(idx)}
                     className={`h-9 rounded-xl text-xs flex items-center justify-center border transition relative ${btnStyle} ${
                       isCurrent ? 'ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-900 font-black z-10' : ''
                     }`}
