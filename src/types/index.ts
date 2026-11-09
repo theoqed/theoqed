@@ -34,3 +34,42 @@ export interface Problem {
   section?: string; // Contoh: "Isian Singkat", "Uraian / Essay", "Bagian A"
   // ... properti lainnya
 }
+
+export interface Solution {
+  title?: string;
+  author?: string;
+  brief?: string;
+  steps?: string[] | string;
+  detailed_steps?: string[] | string;
+  content?: string;
+  solution?: string;
+  full_solution?: string;
+  text?: string;
+  final_answer?: string;
+  answer?: string;
+  result?: string;
+  finalAnswer?: string;
+}
+
+export interface Note {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  topic: string;
+  pattern_type: 'algebra' | 'calculus' | 'geometry' | 'number_theory';
+  gradient_theme: string;
+  order_index: number;
+  created_at?: string;
+}
+
+export interface NoteChapter {
+  id: string;
+  note_id: string;
+  title: string;
+  slug: string;
+  content: string;
+  order_index: number;
+  parent_id?: string | null;
+  children?: NoteChapter[];
+}

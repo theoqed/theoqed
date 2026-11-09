@@ -77,3 +77,27 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #CBD5E1 transparent;
 }
+
+
+@media print {
+  /* Sembunyikan Header Web, Navigation, dan Panel Kontrol */
+  header, nav, .no-print {
+    display: none !important;
+  }
+  
+  /* Set Kertas A4 & Margin Presisi */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 20mm 15mm 20mm;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Cegah Soal Terpotong di Tengah Halaman */
+  .problem-item {
+    page-break-inside: avoid;
+  }
+}

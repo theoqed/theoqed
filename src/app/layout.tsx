@@ -1,19 +1,17 @@
-import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import type { Metadata } from 'next';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import './globals.css';
 import 'katex/dist/katex.min.css';
 
-// Inisialisasi font Plus Jakarta Sans
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
-  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "TheoQED — Platform Bank Soal Olimpiade Matematika",
-  description: "Arsip dan pembahasan soal olimpiade matematika terstruktur.",
+  title: 'TheoQED — Platform Bank Soal & Pembelajaran Matematika',
+  description: 'Arsip soal olimpiade, modul perkuliahan TheoNotes, dan generator lembar kerja.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

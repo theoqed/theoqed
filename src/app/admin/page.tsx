@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import katex from 'katex';
-import { supabase } from '../../lib/supabase';
-import { Problem, Folder, SolutionItem } from '@/types';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+import { AdminNavbar } from '@/components/AdminNavbar';
+import { Footer } from '@/components/Footer';
 
-function FolderIcon({ className = "w-4 h-4" }: { className?: string }) {
+// --- SVG ICON HELPERS ---
+function FolderIcon({ className = "w-6 h-6" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -13,1418 +15,325 @@ function FolderIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function PlusIcon({ className = "w-4 h-4" }: { className?: string }) {
+function BookOpenIcon({ className = "w-6 h-6" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
     </svg>
   );
 }
 
-function MoveIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+function AcademicCapIcon({ className = "w-6 h-6" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 01-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
     </svg>
   );
 }
 
-function EditIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+function CheckBadgeIcon({ className = "w-6 h-6" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
 }
 
-function TrashIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+function ArrowRightIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
     </svg>
   );
 }
 
-function ArrowUpIcon({ className = "w-3 h-3" }: { className?: string }) {
+function SparklesIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
     </svg>
   );
 }
 
-function ArrowDownIcon({ className = "w-3 h-3" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-    </svg>
-  );
+interface StatsData {
+  tryoutsCount: number;
+  problemsCount: number;
+  notesCount: number;
+  submissionsCount: number;
 }
 
-function ChevronRightIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-    </svg>
-  );
-}
-
-function MathText({ text }: { text: string }) {
-  if (!text) return null;
-
-  const parts = text.split(/(\$\$[\s\S]+?\$\$|\$[^$]+\$)/g);
-
-  return (
-    <span className="leading-relaxed font-serif">
-      {parts.map((part, index) => {
-        if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) {
-          const formula = part.slice(2, -2);
-          try {
-            const html = katex.renderToString(formula, {
-              throwOnError: false,
-              displayMode: true,
-              output: 'html',
-            });
-            return (
-              <span
-                key={index}
-                className="block my-2 text-center overflow-x-auto [&_.katex-display]:my-0"
-                dangerouslySetInnerHTML={{ __html: html }}
-              />
-            );
-          } catch (e) {
-            return <code key={index} className="text-red-500 font-mono text-xs block text-center my-2">{part}</code>;
-          }
-        }
-
-        if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
-          const formula = part.slice(1, -1);
-          try {
-            const html = katex.renderToString(formula, {
-              throwOnError: false,
-              displayMode: false,
-              output: 'html',
-            });
-            return <span key={index} dangerouslySetInnerHTML={{ __html: html }} />;
-          } catch (e) {
-            return <code key={index} className="text-red-500 font-mono text-xs">{part}</code>;
-          }
-        }
-
-        return <span key={index}>{part}</span>;
-      })}
-    </span>
-  );
-}
-
-const defaultSolution: SolutionItem = {
-  id: 'sol-1',
-  title: 'Solusi 1',
-  author: 'Dave Marcellino',
-  brief: '',
-  steps: [],
-  final_answer: '',
-};
-
-export default function AdminPage() {
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [problems, setProblems] = useState<Problem[]>([]);
+export default function AdminDashboardPage() {
+  const [stats, setStats] = useState<StatsData>({
+    tryoutsCount: 0,
+    problemsCount: 0,
+    notesCount: 0,
+    submissionsCount: 0,
+  });
   const [loading, setLoading] = useState(true);
 
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-
-  const [showAddProblemModal, setShowAddProblemModal] = useState(false);
-  const [showBatchModal, setShowBatchModal] = useState(false);
-  const [showAddFolderModal, setShowAddFolderModal] = useState(false);
-  const [editingFolder, setEditingFolder] = useState<{ id: string; name: string } | null>(null);
-  const [editingProblemId, setEditingProblemId] = useState<string | null>(null);
-
-  const [moveTarget, setMoveTarget] = useState<{ id: string; type: 'problem' | 'folder'; name: string } | null>(null);
-  const [moveModalFolderId, setMoveModalFolderId] = useState<string | null>(null);
-
-  const [newFolderName, setNewFolderName] = useState('');
-
-  // State Form Single Problem
-  const [formData, setFormData] = useState<{
-    id: string;
-    title: string;
-    competition: string;
-    year: number;
-    level: string;
-    topic: string;
-    statement: string;
-    solutions: SolutionItem[];
-    section: string;
-  }>({
-    id: '',
-    title: '',
-    competition: '',
-    year: 2026,
-    level: '',
-    topic: '',
-    statement: '',
-    solutions: [{ ...defaultSolution }],
-    section: '',
-  });
-
-  const [stepsText, setStepsText] = useState<{ [solId: string]: string }>({
-    'sol-1': '',
-  });
-
-  // State Input Massal (Batch)
-  const [batchMeta, setBatchMeta] = useState({
-    competition: '',
-    year: 2026,
-    level: '',
-    topic: '',
-    section: '',
-  });
-
-  const [batchItems, setBatchItems] = useState<Array<{ id: string; title: string; statement: string }>>([
-    { id: '', title: '', statement: '' },
-  ]);
-
   useEffect(() => {
-    fetchData();
+    fetchStats();
   }, []);
 
-  async function fetchData() {
+  async function fetchStats() {
     setLoading(true);
 
-    // Ambil data folder & urutkan di JavaScript untuk menghindari kegagalan jika order_index bernilai null
-    const { data: folderData, error: fErr } = await supabase.from('folders').select('*');
-    if (!fErr && folderData) {
-      const sortedFolders = (folderData as Folder[]).sort((a, b) => {
-        const orderA = (a as any).order_index ?? 0;
-        const orderB = (b as any).order_index ?? 0;
-        if (orderA !== orderB) return orderA - orderB;
-        return a.name.localeCompare(b.name);
-      });
-      setFolders(sortedFolders);
-    }
+    const [tryoutRes, problemsRes, notesRes, subRes] = await Promise.all([
+      supabase.from('tryouts').select('id', { count: 'exact', head: true }),
+      supabase.from('problems').select('id', { count: 'exact', head: true }),
+      supabase.from('notes').select('id', { count: 'exact', head: true }),
+      supabase.from('solution_submissions').select('id', { count: 'exact', head: true }),
+    ]);
 
-    // Ambil data soal
-    const { data: problemData } = await supabase
-      .from('problems')
-      .select('*')
-      .order('order_index', { ascending: true });
+    setStats({
+      tryoutsCount: tryoutRes.count || 0,
+      problemsCount: problemsRes.count || 0,
+      notesCount: notesRes.count || 0,
+      submissionsCount: subRes.count || 0,
+    });
 
-    if (problemData) setProblems(problemData as Problem[]);
     setLoading(false);
   }
 
-  const currentFolder = folders.find((f) => f.id === currentFolderId);
-  const currentSubFolders = folders.filter((f) =>
-    currentFolderId === null ? !f.parent_id : f.parent_id === currentFolderId
-  );
-  const currentProblems = problems.filter((p) =>
-    currentFolderId === null ? !p.folder_id : p.folder_id === currentFolderId
-  );
-
-  const getBreadcrumbs = () => {
-    const crumbs: Folder[] = [];
-    let curr = currentFolder;
-    while (curr) {
-      crumbs.unshift(curr);
-      curr = folders.find((f) => f.id === curr?.parent_id);
-    }
-    return crumbs;
-  };
-  const breadcrumbs = getBreadcrumbs();
-
-  const moveModalCurrentFolder = folders.find((f) => f.id === moveModalFolderId);
-  const moveModalSubFolders = folders.filter((f) =>
-    moveModalFolderId === null ? !f.parent_id : f.parent_id === moveModalFolderId
-  );
-
-  const getMoveModalBreadcrumbs = () => {
-    const crumbs: Folder[] = [];
-    let curr = moveModalCurrentFolder;
-    while (curr) {
-      crumbs.unshift(curr);
-      curr = folders.find((f) => f.id === curr?.parent_id);
-    }
-    return crumbs;
-  };
-  const moveModalBreadcrumbs = getMoveModalBreadcrumbs();
-
-  const resetForm = () => {
-    const initSolId = `sol-${Date.now()}`;
-    setFormData({
-      id: '',
-      title: '',
-      competition: currentFolder?.name || '',
-      year: 2026,
-      level: '',
-      topic: '',
-      statement: '',
-      solutions: [{ ...defaultSolution, id: initSolId }],
-      section: '',
-    });
-    setStepsText({ [initSolId]: '' });
-    setEditingProblemId(null);
-  };
-
-  const resetBatchForm = () => {
-    setBatchMeta({
-      competition: currentFolder?.name || '',
-      year: 2026,
-      level: '',
-      topic: '',
-      section: '',
-    });
-    setBatchItems([{ id: '', title: '', statement: '' }]);
-  };
-
-  const handleStartEdit = (problem: Problem) => {
-    setEditingProblemId(problem.id);
-    const loadedSolutions = problem.solutions && problem.solutions.length > 0
-      ? problem.solutions
-      : [{ ...defaultSolution, id: `sol-${Date.now()}` }];
-
-    const newStepsText: { [solId: string]: string } = {};
-    loadedSolutions.forEach((sol) => {
-      newStepsText[sol.id] = sol.steps ? sol.steps.join('\n') : '';
-    });
-
-    setFormData({
-      id: problem.id,
-      title: problem.title || '',
-      competition: problem.competition || '',
-      year: problem.year || 2026,
-      level: problem.level || '',
-      topic: problem.topic || '',
-      statement: problem.statement || '',
-      solutions: loadedSolutions,
-      section: problem.section || '',
-    });
-    setStepsText(newStepsText);
-    setShowAddProblemModal(true);
-  };
-
-  const handleAddSolution = () => {
-    const newSolId = `sol-${Date.now()}`;
-    const newSol: SolutionItem = {
-      id: newSolId,
-      title: `Solusi ${formData.solutions.length + 1}`,
-      author: 'Dave Marcellino',
-      brief: '',
-      steps: [],
-      final_answer: '',
-    };
-    setFormData({ ...formData, solutions: [...formData.solutions, newSol] });
-    setStepsText({ ...stepsText, [newSolId]: '' });
-  };
-
-  const handleRemoveSolution = (solId: string) => {
-    if (formData.solutions.length <= 1) return;
-    setFormData({
-      ...formData,
-      solutions: formData.solutions.filter((s) => s.id !== solId),
-    });
-  };
-
-  const handleUpdateSolution = (solId: string, field: keyof SolutionItem, value: any) => {
-    setFormData({
-      ...formData,
-      solutions: formData.solutions.map((sol) =>
-        sol.id === solId ? { ...sol, [field]: value } : sol
-      ),
-    });
-  };
-
-  // Handler Batch Input
-  const handleAddBatchRow = () => {
-    setBatchItems([...batchItems, { id: '', title: '', statement: '' }]);
-  };
-
-  const handleRemoveBatchRow = (index: number) => {
-    if (batchItems.length <= 1) return;
-    setBatchItems(batchItems.filter((_, i) => i !== index));
-  };
-
-  const handleBatchItemChange = (index: number, field: 'id' | 'title' | 'statement', value: string) => {
-    const updated = [...batchItems];
-    updated[index][field] = value;
-    setBatchItems(updated);
-  };
-
-  // Buat Folder Baru
-  const handleCreateFolder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFolderName.trim()) return;
-
-    const currentMaxOrder = currentSubFolders.length > 0
-      ? Math.max(...currentSubFolders.map((f) => (f as any).order_index || 0))
-      : 0;
-
-    const folderId = newFolderName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString().slice(-4);
-    const { error } = await supabase.from('folders').insert([
-      {
-        id: folderId,
-        name: newFolderName.trim(),
-        parent_id: currentFolderId,
-        order_index: currentMaxOrder + 1,
-      }
-    ]);
-
-    if (!error) {
-      setNewFolderName('');
-      setShowAddFolderModal(false);
-      fetchData();
-    } else {
-      alert(`Gagal membuat folder: ${error.message}`);
-    }
-  };
-
-  // Ubah Nama (Rename) Folder
-  const handleRenameFolderSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingFolder || !editingFolder.name.trim()) return;
-
-    const { data, error } = await supabase
-      .from('folders')
-      .update({ name: editingFolder.name.trim() })
-      .eq('id', editingFolder.id)
-      .select();
-
-    if (error) {
-      alert(`Gagal merename folder: ${error.message}`);
-    } else if (!data || data.length === 0) {
-      alert('Gagal merename: Data tidak ditemukan atau terhalang aturan RLS Supabase.');
-    } else {
-      setEditingFolder(null);
-      await fetchData();
-    }
-  };
-
-  // Reorder Folder (Tukar urutan 1-per-1)
-  const handleMoveFolderOrder = async (index: number, direction: 'up' | 'down') => {
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= currentSubFolders.length) return;
-
-    const updatedSubFolders = [...currentSubFolders];
-    const temp = updatedSubFolders[index];
-    updatedSubFolders[index] = updatedSubFolders[targetIndex];
-    updatedSubFolders[targetIndex] = temp;
-
-    // Update order_index seluruh folder di level ini secara eksplisit
-    const updates = updatedSubFolders.map((folder, i) =>
-      supabase
-        .from('folders')
-        .update({ order_index: i + 1 })
-        .eq('id', folder.id)
-    );
-
-    const results = await Promise.all(updates);
-    const hasError = results.find((r) => r.error);
-
-    if (hasError?.error) {
-      alert(`Gagal mengubah urutan: ${hasError.error.message}`);
-    } else {
-      await fetchData();
-    }
-  };
-
-  const handleSubmitProblem = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const processedSolutions = formData.solutions
-      .filter((sol) => sol.brief?.trim() !== '' || stepsText[sol.id]?.trim() !== '')
-      .map((sol) => {
-        const rawText = stepsText[sol.id] || '';
-        const stepsArray = rawText.split('\n').filter((step) => step.trim() !== '');
-        return {
-          ...sol,
-          steps: stepsArray,
-        };
-      });
-
-    const payload = {
-      title: formData.title.trim(),
-      competition: formData.competition.trim() || currentFolder?.name || 'Umum',
-      year: Number(formData.year),
-      level: formData.level.trim() || 'Umum',
-      topic: formData.topic.trim() || 'Umum',
-      statement: formData.statement,
-      solutions: processedSolutions,
-      section: formData.section ? formData.section.trim() : null,
-    };
-
-    if (editingProblemId) {
-      const { error } = await supabase
-        .from('problems')
-        .update(payload)
-        .eq('id', editingProblemId);
-
-      if (!error) {
-        setShowAddProblemModal(false);
-        resetForm();
-        fetchData();
-      } else {
-        alert(`Gagal memperbarui soal: ${error.message}`);
-      }
-    } else {
-      const currentMaxOrder = problems.length > 0 ? Math.max(...problems.map((p) => p.order_index || 0)) : 0;
-
-      const { error } = await supabase.from('problems').insert([
-        {
-          id: formData.id.trim(),
-          ...payload,
-          folder_id: currentFolderId,
-          order_index: currentMaxOrder + 1,
-        },
-      ]);
-
-      if (!error) {
-        setShowAddProblemModal(false);
-        resetForm();
-        fetchData();
-      } else {
-        alert(`Gagal menyimpan soal: ${error.message}`);
-      }
-    }
-  };
-
-  const handleBatchSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const validItems = batchItems.filter(
-      (item) => item.id.trim() !== '' && item.statement.trim() !== ''
-    );
-
-    if (validItems.length === 0) {
-      alert('Harap isi minimal satu soal dengan ID dan Pernyataan yang valid.');
-      return;
-    }
-
-    const currentMaxOrder = problems.length > 0 ? Math.max(...problems.map((p) => p.order_index || 0)) : 0;
-
-    const payload = validItems.map((item, index) => ({
-      id: item.id.trim(),
-      title: item.title.trim() || `Soal ${item.id.trim()}`,
-      competition: batchMeta.competition.trim() || currentFolder?.name || 'Umum',
-      year: Number(batchMeta.year),
-      level: batchMeta.level.trim() || 'Umum',
-      topic: batchMeta.topic.trim() || 'Umum',
-      section: batchMeta.section.trim() ? batchMeta.section.trim() : null,
-      statement: item.statement,
-      solutions: [],
-      folder_id: currentFolderId,
-      order_index: currentMaxOrder + index + 1,
-    }));
-
-    const { error } = await supabase.from('problems').insert(payload);
-
-    if (!error) {
-      setShowBatchModal(false);
-      resetBatchForm();
-      fetchData();
-    } else {
-      alert(`Gagal menambah batch: ${error.message}`);
-    }
-  };
-
-  const handleConfirmMove = async () => {
-    if (!moveTarget) return;
-
-    if (moveTarget.type === 'problem') {
-      const { error } = await supabase
-        .from('problems')
-        .update({ folder_id: moveModalFolderId })
-        .eq('id', moveTarget.id);
-      if (!error) {
-        setMoveTarget(null);
-        fetchData();
-      } else alert(`Gagal memindahkan: ${error.message}`);
-    } else {
-      if (moveTarget.id === moveModalFolderId) {
-        alert('Tidak bisa memindahkan folder ke dalam dirinya sendiri!');
-        return;
-      }
-      const { error } = await supabase
-        .from('folders')
-        .update({ parent_id: moveModalFolderId })
-        .eq('id', moveTarget.id);
-      if (!error) {
-        setMoveTarget(null);
-        fetchData();
-      } else alert(`Gagal memindahkan: ${error.message}`);
-    }
-  };
-
-  const handleDeleteProblem = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus soal ini?')) return;
-    const { error } = await supabase.from('problems').delete().eq('id', id);
-    if (!error) fetchData();
-  };
-
-  const handleDeleteFolder = async (id: string) => {
-    if (!confirm('Hapus folder ini beserta isinya?')) return;
-    const { error } = await supabase.from('folders').delete().eq('id', id);
-    if (!error) fetchData();
-  };
-
-  const handleMoveOrder = async (index: number, direction: 'up' | 'down') => {
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= currentProblems.length) return;
-
-    const p1 = currentProblems[index];
-    const p2 = currentProblems[targetIndex];
-
-    await supabase.from('problems').update({ order_index: p2.order_index }).eq('id', p1.id);
-    await supabase.from('problems').update({ order_index: p1.order_index }).eq('id', p2.id);
-
-    fetchData();
-  };
-
-  const inputClass = "w-full px-4 py-2.5 border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-slate-800 transition shadow-sm";
-
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans pb-20">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans flex flex-col justify-between transition-colors duration-200">
+      <div className="flex-1 pb-20">
+        
+        {/* Dedicated Admin Navbar */}
+        <AdminNavbar />
 
-      {/* Header Admin */}
-      <header className="border-b border-slate-200 bg-slate-900 text-white sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-xl font-black tracking-tight flex items-center gap-1">
-              <span className="text-blue-400">√</span>TheoQED Admin<span className="text-blue-400">.</span>
-            </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-400/30">
-              Google Drive Management Mode
-            </span>
-          </div>
+        {/* Main Dashboard Layout */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 my-8 space-y-8">
 
-          <a href="/arsip" className="text-xs font-semibold text-slate-300 hover:text-white transition">
-            Lihat Tampilan Publik (Arsip) →
-          </a>
-        </div>
-      </header>
-
-      {/* Direct Folder Context Manager */}
-      <div className="bg-white border-b border-slate-200/80 py-6 px-6">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Lokasi Folder Kerja</span>
-
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-              <button
-                onClick={() => setCurrentFolderId(null)}
-                className={`px-2.5 py-1 rounded-lg transition inline-flex items-center gap-1.5 ${
-                  currentFolderId === null ? 'bg-slate-900 text-white font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
-              >
-                <FolderIcon className="w-3.5 h-3.5" />
-                <span>Root</span>
-              </button>
-
-              {breadcrumbs.map((crumb, idx) => (
-                <div key={crumb.id} className="flex items-center gap-2">
-                  <span className="text-slate-300">/</span>
-                  <button
-                    onClick={() => setCurrentFolderId(crumb.id)}
-                    className={`px-2.5 py-1 rounded-lg transition inline-flex items-center gap-1.5 ${
-                      idx === breadcrumbs.length - 1
-                        ? 'bg-blue-600 text-white font-bold'
-                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                    }`}
-                  >
-                    <FolderIcon className="w-3.5 h-3.5" />
-                    <span>{crumb.name}</span>
-                  </button>
-                </div>
-              ))}
+          {/* Hero Banner Greeting */}
+          <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-slate-900 text-white p-6 sm:p-9 rounded-3xl shadow-lg relative overflow-hidden">
+            <div className="relative z-10 max-w-2xl space-y-2.5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-bold tracking-wide uppercase text-indigo-100 border border-white/20">
+                <SparklesIcon className="w-3.5 h-3.5" />
+                <span>TheoQED Control Center</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+                Selamat Datang di Portal Admin
+              </h1>
+              <p className="text-xs sm:text-sm text-indigo-100 leading-relaxed font-medium">
+                Pusat manajemen terpadu untuk menyusun simulasi Try Out, mengelola arsip Bank Soal olimpiade, menerbitkan materi TheoNotes, dan memoderasi solusi dari komunitas.
+              </p>
+            </div>
+            
+            <div className="absolute right-[-10px] bottom-[-30px] opacity-10 text-white pointer-events-none select-none font-serif text-9xl font-black">
+              √QED
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setShowAddFolderModal(true)}
-              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition inline-flex items-center gap-1.5"
-            >
-              <PlusIcon />
-              <span>+ Sub-Folder Baru</span>
-            </button>
-            <button
-              onClick={() => {
-                resetBatchForm();
-                setShowBatchModal(true);
-              }}
-              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition shadow-sm inline-flex items-center gap-1.5"
-            >
-              <PlusIcon />
-              <span>+ Input Massal (Batch)</span>
-            </button>
-            <button
-              onClick={() => {
-                resetForm();
-                setShowAddProblemModal(true);
-              }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-sm inline-flex items-center gap-1.5"
-            >
-              <PlusIcon />
-              <span>+ Tambah Soal Satuan</span>
-            </button>
-          </div>
-        </div>
-      </div>
+          {/* STATS OVERVIEW CARDS */}
+          <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                Paket Try Out
+              </span>
+              <div className="flex items-baseline justify-between">
+                <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                  {loading ? '...' : stats.tryoutsCount}
+                </span>
+                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-2.5 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900">
+                  Paket
+                </span>
+              </div>
+            </div>
 
-      {/* Main Folder Workspace */}
-      <div className="max-w-5xl mx-auto px-6 mt-8 space-y-8">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                Database Soal
+              </span>
+              <div className="flex items-baseline justify-between">
+                <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                  {loading ? '...' : stats.problemsCount}
+                </span>
+                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 px-2.5 py-0.5 rounded-lg border border-blue-100 dark:border-blue-900">
+                  Soal
+                </span>
+              </div>
+            </div>
 
-        {/* SUB-FOLDERS */}
-        {currentSubFolders.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              Sub-Folder ({currentSubFolders.length})
-            </h2>
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                Modul TheoNotes
+              </span>
+              <div className="flex items-baseline justify-between">
+                <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                  {loading ? '...' : stats.notesCount}
+                </span>
+                <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/80 px-2.5 py-0.5 rounded-lg border border-purple-100 dark:border-purple-900">
+                  Modul
+                </span>
+              </div>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {currentSubFolders.map((folder, idx) => {
-                const childFolderCount = folders.filter((f) => f.parent_id === folder.id).length;
-                const childProblemCount = problems.filter((p) => p.folder_id === folder.id).length;
-
-                return (
-                  <div
-                    key={folder.id}
-                    className="bg-white p-4 rounded-xl border border-slate-200/80 hover:border-slate-300 shadow-sm transition flex items-center justify-between group"
-                  >
-                    <div
-                      onClick={() => setCurrentFolderId(folder.id)}
-                      className="flex items-center gap-3 cursor-pointer truncate flex-1 pr-2"
-                    >
-                      <div className="p-2 rounded-lg bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 transition shrink-0">
-                        <FolderIcon className="w-4 h-4" />
-                      </div>
-                      <div className="truncate">
-                        <h3 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition truncate">
-                          {folder.name}
-                        </h3>
-                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                          {childFolderCount > 0 && `${childFolderCount} folder `}
-                          {childProblemCount > 0 && `${childProblemCount} soal`}
-                          {childFolderCount === 0 && childProblemCount === 0 && 'Kosong'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Tombol Aksi Folder: Naik/Turun, Rename, Move, Delete */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => handleMoveFolderOrder(idx, 'up')}
-                        disabled={idx === 0}
-                        className="p-1 bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
-                        title="Naikkan Urutan Folder"
-                      >
-                        <ArrowUpIcon />
-                      </button>
-                      <button
-                        onClick={() => handleMoveFolderOrder(idx, 'down')}
-                        disabled={idx === currentSubFolders.length - 1}
-                        className="p-1 bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
-                        title="Turunkan Urutan Folder"
-                      >
-                        <ArrowDownIcon />
-                      </button>
-                      <button
-                        onClick={() => setEditingFolder({ id: folder.id, name: folder.name })}
-                        className="p-1.5 hover:bg-blue-50 rounded text-slate-400 hover:text-blue-600 transition"
-                        title="Ubah Nama (Rename) Folder"
-                      >
-                        <EditIcon />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setMoveTarget({ id: folder.id, type: 'folder', name: folder.name });
-                          setMoveModalFolderId(null);
-                        }}
-                        className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700 transition"
-                        title="Pindahkan Folder"
-                      >
-                        <MoveIcon />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteFolder(folder.id)}
-                        className="p-1.5 hover:bg-red-50 rounded text-slate-400 hover:text-red-600 transition"
-                        title="Hapus Folder"
-                      >
-                        <TrashIcon />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                Pengajuan Solusi
+              </span>
+              <div className="flex items-baseline justify-between">
+                <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                  {loading ? '...' : stats.submissionsCount}
+                </span>
+                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/80 px-2.5 py-0.5 rounded-lg border border-amber-100 dark:border-amber-900">
+                  Submisi
+                </span>
+              </div>
             </div>
           </section>
-        )}
 
-        {/* DAFTAR SOAL */}
-        <section className="space-y-3">
-          <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            Daftar Soal ({currentProblems.length})
-          </h2>
+          {/* BENTO GRID: 4 CORE ADMIN MODULES */}
+          <section className="space-y-4">
+            <h2 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              Modul Utama Manajemen Platform
+            </h2>
 
-          {loading ? (
-            <div className="bg-white p-10 rounded-xl border border-slate-200 text-center text-slate-400 text-xs">
-              Memuat data...
-            </div>
-          ) : currentProblems.length > 0 ? (
-            <div className="space-y-3">
-              {currentProblems.map((problem, idx) => (
-                <div key={problem.id} className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:border-slate-300 transition">
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                        #{idx + 1}
-                      </span>
-                      <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded">
-                        {problem.competition} {problem.year} ({problem.level})
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleMoveOrder(idx, 'up')}
-                        disabled={idx === 0}
-                        className="p-1 bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
-                        title="Naikkan Urutan"
-                      >
-                        <ArrowUpIcon />
-                      </button>
-                      <button
-                        onClick={() => handleMoveOrder(idx, 'down')}
-                        disabled={idx === currentProblems.length - 1}
-                        className="p-1 bg-white border rounded hover:bg-slate-100 disabled:opacity-30"
-                        title="Turunkan Urutan"
-                      >
-                        <ArrowDownIcon />
-                      </button>
-                      <button
-                        onClick={() => handleStartEdit(problem)}
-                        className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold rounded inline-flex items-center gap-1 transition ml-1"
-                        title="Edit Soal"
-                      >
-                        <EditIcon />
-                        <span>Edit</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setMoveTarget({ id: problem.id, type: 'problem', name: problem.title });
-                          setMoveModalFolderId(null);
-                        }}
-                        className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded inline-flex items-center gap-1 transition ml-1"
-                      >
-                        <MoveIcon />
-                        <span>Pindahkan</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProblem(problem.id)}
-                        className="p-1.5 bg-red-50 text-red-600 border border-red-100 rounded hover:bg-red-100 transition ml-1"
-                        title="Hapus Soal"
-                      >
-                        <TrashIcon />
-                      </button>
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Card 1: Katalog Try Out CMS */}
+              <div className="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-6 hover:border-indigo-500 dark:hover:border-indigo-500 transition group">
+                <div className="space-y-3">
+                  <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 w-fit">
+                    <AcademicCapIcon />
                   </div>
-
-                  <div className="text-slate-800 text-base leading-relaxed mb-5 whitespace-pre-line">
-                    <MathText text={problem.statement} />
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-slate-400 font-mono">ID: {problem.id}</span>
-                    <span className="text-slate-500 font-medium">
-                      Topik: {problem.topic} • Solusi: <strong>{problem.solutions?.length || 0} Metode</strong>
-                    </span>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                      Katalog Try Out CMS
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      Kelola paket simulasi ujian matematika, alokasi waktu, pembuatan bundel soal, serta pemantauan hasil skor peserta secara *real-time*.
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : currentSubFolders.length === 0 ? (
-            <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
-              Folder ini masih kosong. Klik <strong>+ Input Massal (Batch)</strong> atau <strong>+ Tambah Soal Satuan</strong> untuk menginput soal.
-            </div>
-          ) : null}
-        </section>
 
+                <Link
+                  href="/admin/tryout"
+                  className="w-full py-3 px-4 bg-slate-900 hover:bg-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-between shadow-sm"
+                >
+                  <span>Kelola Paket Try Out</span>
+                  <ArrowRightIcon />
+                </Link>
+              </div>
+
+              {/* Card 2: Bank Soal CMS */}
+              <div className="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-6 hover:border-blue-500 dark:hover:border-blue-500 transition group">
+                <div className="space-y-3">
+                  <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 w-fit">
+                    <FolderIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                      Bank Soal & Folder CMS
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      Kelola repositori soal olimpiade (ONMIPA/KNMIPA), hirarki folder berstruktur Google Drive style, serta penyusunan multi-metode pembahasan.
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href="/admin/problems"
+                  className="w-full py-3 px-4 bg-slate-900 hover:bg-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-between shadow-sm"
+                >
+                  <span>Kelola Bank Soal & Folder</span>
+                  <ArrowRightIcon />
+                </Link>
+              </div>
+
+              {/* Card 3: TheoNotes CMS */}
+              <div className="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-6 hover:border-purple-500 dark:hover:border-purple-500 transition group">
+                <div className="space-y-3">
+                  <div className="p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 w-fit">
+                    <BookOpenIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition">
+                      TheoNotes CMS
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      Penyusunan modul ringkasan materi perkuliahan terstruktur, penataan bab & subbab hierarkis, serta dual-panel editor KaTeX *live preview*.
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href="/admin/notes"
+                  className="w-full py-3 px-4 bg-slate-900 hover:bg-purple-600 dark:bg-slate-800 dark:hover:bg-purple-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-between shadow-sm"
+                >
+                  <span>Kelola Modul TheoNotes</span>
+                  <ArrowRightIcon />
+                </Link>
+              </div>
+
+              {/* Card 4: Moderasi Solusi Komunitas */}
+              <div className="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-6 hover:border-amber-500 dark:hover:border-amber-500 transition group">
+                <div className="space-y-3">
+                  <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 w-fit">
+                    <CheckBadgeIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
+                      Moderasi Solusi Komunitas
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      Tinjau kiriman solusi dari mahasiswa/pengguna, validasi kebenaran notasi KaTeX, serta setujui untuk dipublikasikan ke Bank Soal utama.
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href="/admin/submissions"
+                  className="w-full py-3 px-4 bg-slate-900 hover:bg-amber-600 dark:bg-slate-800 dark:hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition flex items-center justify-between shadow-sm"
+                >
+                  <span>Buka Panel Moderasi</span>
+                  <ArrowRightIcon />
+                </Link>
+              </div>
+
+            </div>
+          </section>
+
+          {/* QUICK SHORTCUTS TO PUBLIC SITE */}
+          <section className="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+            <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              Pintas Tampilan Publik (Siswa & Pengunjung)
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-bold">
+              <Link
+                href="/tryout"
+                target="_blank"
+                className="p-4 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-800 flex items-center justify-between transition text-slate-800 dark:text-slate-200"
+              >
+                <span>📝 Portal Try Out Publik</span>
+                <span className="text-slate-400">↗</span>
+              </Link>
+              <Link
+                href="/arsip"
+                target="_blank"
+                className="p-4 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-800 flex items-center justify-between transition text-slate-800 dark:text-slate-200"
+              >
+                <span>🌐 Bank Soal & Arsip Publik</span>
+                <span className="text-slate-400">↗</span>
+              </Link>
+              <Link
+                href="/notes"
+                target="_blank"
+                className="p-4 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-800 flex items-center justify-between transition text-slate-800 dark:text-slate-200"
+              >
+                <span>📖 TheoNotes Reader Publik</span>
+                <span className="text-slate-400">↗</span>
+              </Link>
+            </div>
+          </section>
+
+        </main>
       </div>
 
-      {/* MODAL 1: BUAT SUB-FOLDER BARU */}
-      {showAddFolderModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-md w-full shadow-xl space-y-4">
-            <h3 className="text-base font-bold text-slate-900">Buat Folder Baru</h3>
-            <p className="text-xs text-slate-500">
-              Folder baru akan dibuat di dalam: <strong>{currentFolder ? currentFolder.name : 'Root Utama'}</strong>
-            </p>
-            <form onSubmit={handleCreateFolder} className="space-y-4">
-              <input
-                type="text"
-                required
-                placeholder="Nama Folder (mis. Wilayah, 2026)"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                className={inputClass}
-              />
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddFolderModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-xl transition"
-                >
-                  Buat Folder
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL RENAME FOLDER */}
-      {editingFolder && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-md w-full shadow-xl space-y-4">
-            <h3 className="text-base font-bold text-slate-900">Ubah Nama Folder</h3>
-            <form onSubmit={handleRenameFolderSubmit} className="space-y-4">
-              <input
-                type="text"
-                required
-                placeholder="Nama Folder Baru"
-                value={editingFolder.name}
-                onChange={(e) => setEditingFolder({ ...editingFolder, name: e.target.value })}
-                className={inputClass}
-              />
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingFolder(null)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-xl transition"
-                >
-                  Simpan Nama
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 2: INPUT SOAL MASSAL (BATCH) */}
-      {showBatchModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200/80 max-w-4xl w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-            
-            <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Input Soal Massal (Batch)</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Isi metadata satu kali, lalu masukkan ID, Judul, dan Teks untuk banyak soal sekaligus.
-                </p>
-              </div>
-              <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-lg">
-                Folder: {currentFolder ? currentFolder.name : 'Root'}
-              </span>
-            </div>
-
-            <form onSubmit={handleBatchSubmit} className="flex flex-col flex-1 overflow-hidden">
-              <div className="p-6 space-y-6 overflow-y-auto flex-1">
-                
-                {/* METADATA BERSAMA */}
-                <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Metadata Bersama Batch Ini</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Kompetisi</label>
-                      <input
-                        type="text"
-                        placeholder="mis. ONMIPA-PT"
-                        value={batchMeta.competition}
-                        onChange={(e) => setBatchMeta({ ...batchMeta, competition: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Tahun</label>
-                      <input
-                        type="number"
-                        required
-                        value={batchMeta.year}
-                        onChange={(e) => setBatchMeta({ ...batchMeta, year: Number(e.target.value) })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Tingkat</label>
-                      <input
-                        type="text"
-                        placeholder="mis. Wilayah / Nasional"
-                        value={batchMeta.level}
-                        onChange={(e) => setBatchMeta({ ...batchMeta, level: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Topik / Bidang</label>
-                      <input
-                        type="text"
-                        placeholder="mis. Struktur Aljabar"
-                        value={batchMeta.topic}
-                        onChange={(e) => setBatchMeta({ ...batchMeta, topic: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Seksi / Section (Opsional)</label>
-                      <input
-                        type="text"
-                        placeholder="mis. Isian Singkat, Uraian"
-                        value={batchMeta.section}
-                        onChange={(e) => setBatchMeta({ ...batchMeta, section: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* DAFTAR ITEM SOAL */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                      Daftar Soal ({batchItems.length})
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={handleAddBatchRow}
-                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition inline-flex items-center gap-1"
-                    >
-                      <PlusIcon className="w-3.5 h-3.5" />
-                      <span>+ Tambah Baris Soal</span>
-                    </button>
-                  </div>
-
-                  {batchItems.map((item, index) => (
-                    <div key={index} className="p-4 bg-white border border-slate-200 rounded-xl space-y-3 relative shadow-sm">
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                        <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md">
-                          Baris Soal #{index + 1}
-                        </span>
-                        {batchItems.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveBatchRow(index)}
-                            className="text-xs text-red-500 hover:text-red-700 font-bold transition inline-flex items-center gap-1"
-                          >
-                            <TrashIcon />
-                            <span>Hapus Baris</span>
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">ID Soal (Unik)</label>
-                          <input
-                            type="text"
-                            required
-                            placeholder="mis. ONM-26-W1-I1"
-                            value={item.id}
-                            onChange={(e) => handleBatchItemChange(index, 'id', e.target.value)}
-                            className={`${inputClass} font-mono`}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Judul Singkat Soal</label>
-                          <input
-                            type="text"
-                            required
-                            placeholder="mis. Soal 1 Isian Singkat"
-                            value={item.title}
-                            onChange={(e) => handleBatchItemChange(index, 'title', e.target.value)}
-                            className={inputClass}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Pernyataan Soal (LaTeX $...$)</label>
-                        <textarea
-                          rows={3}
-                          required
-                          placeholder="Tuliskan pernyataan soal di sini..."
-                          value={item.statement}
-                          onChange={(e) => handleBatchItemChange(index, 'statement', e.target.value)}
-                          className={`${inputClass} font-mono leading-relaxed`}
-                        />
-                      </div>
-
-                      {/* Live Preview Per Soal */}
-                      <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs whitespace-pre-line min-h-[42px]">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                          Live Preview Tampilan Soal #{index + 1}:
-                        </span>
-                        <MathText text={item.statement} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-              </div>
-
-              <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t border-slate-100 shrink-0 bg-white">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowBatchModal(false);
-                    resetBatchForm();
-                  }}
-                  className="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 rounded-xl transition shadow-sm"
-                >
-                  Simpan Semua Soal Massal ({batchItems.length})
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 3: INPUT / EDIT SOAL SATUAN */}
-      {showAddProblemModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200/80 max-w-4xl w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-
-            <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  {editingProblemId ? 'Edit Soal' : 'Tambah Soal Satuan'}
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Gunakan notasi <code className="text-blue-600 font-mono font-bold">$...$</code> untuk persamaan matematika.
-                </p>
-              </div>
-              <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg">
-                Lokasi: {currentFolder ? currentFolder.name : 'Root'}
-              </span>
-            </div>
-
-            <form onSubmit={handleSubmitProblem} className="flex flex-col flex-1 overflow-hidden">
-              <div className="p-6 space-y-6 overflow-y-auto flex-1">
-
-                <div className="space-y-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Metadata Soal</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">ID Soal (Unik)</label>
-                      <input
-                        type="text"
-                        required
-                        disabled={Boolean(editingProblemId)}
-                        placeholder="mis. ONMIPA-2026-W1"
-                        value={formData.id}
-                        onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                        className={`${inputClass} ${editingProblemId ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''}`}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Judul Singkat Soal</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="mis. Soal 1 Isian Singkat"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Kompetisi</label>
-                      <input
-                        type="text"
-                        placeholder="mis. ONMIPA"
-                        value={formData.competition}
-                        onChange={(e) => setFormData({ ...formData, competition: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Tahun</label>
-                      <input
-                        type="number"
-                        required
-                        value={formData.year}
-                        onChange={(e) => setFormData({ ...formData, year: Number(e.target.value) })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Tingkat</label>
-                      <input
-                        type="text"
-                        placeholder="mis. Wilayah / Nasional"
-                        value={formData.level}
-                        onChange={(e) => setFormData({ ...formData, level: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Topik / Bidang</label>
-                      <input
-                        type="text"
-                        placeholder="mis. Aljabar"
-                        value={formData.topic}
-                        onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1">Bagian / Section Soal (Opsional)</label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Isian Singkat, Uraian, Bagian A"
-                    value={formData.section}
-                    onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-                    className={inputClass}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-700">Teks Soal (LaTeX $...$)</label>
-                  <textarea
-                    rows={4}
-                    required
-                    placeholder="Tentukan nilai dari $\int_0^1 x^2 dx$..."
-                    value={formData.statement}
-                    onChange={(e) => setFormData({ ...formData, statement: e.target.value })}
-                    className={`${inputClass} font-mono leading-relaxed`}
-                  />
-                  <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl min-h-[50px] text-sm whitespace-pre-line">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Live Preview Tampilan Soal:</span>
-                    <MathText text={formData.statement} />
-                  </div>
-                </div>
-
-                <div className="space-y-4 pt-4 border-t border-slate-200/80">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Opsi Solusi & Pembahasan</h4>
-                      <p className="text-[11px] text-slate-500">Bisa menambahkan lebih dari 1 metode penyelesaian untuk 1 soal.</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddSolution}
-                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition inline-flex items-center gap-1"
-                    >
-                      <PlusIcon className="w-3.5 h-3.5" />
-                      <span>+ Tambah Metode Solusi Baru</span>
-                    </button>
-                  </div>
-
-                  {formData.solutions.map((sol, index) => (
-                    <div key={sol.id} className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 relative">
-                      <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
-                        <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-md">
-                          Metode Solusi #{index + 1}
-                        </span>
-                        {formData.solutions.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSolution(sol.id)}
-                            className="text-xs text-red-500 hover:text-red-700 font-bold transition inline-flex items-center gap-1"
-                          >
-                            <TrashIcon />
-                            <span>Hapus Solusi Ini</span>
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">Judul Solusi / Metode</label>
-                          <input
-                            type="text"
-                            required
-                            placeholder="mis. Solusi 1 (Resmi) / Metode AM-GM"
-                            value={sol.title}
-                            onChange={(e) => handleUpdateSolution(sol.id, 'title', e.target.value)}
-                            className={inputClass}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">Penulis / Penyusun Solusi</label>
-                          <input
-                            type="text"
-                            placeholder="mis. Official IMO 2024 / Dave Marcellino"
-                            value={sol.author}
-                            onChange={(e) => handleUpdateSolution(sol.id, 'author', e.target.value)}
-                            className={inputClass}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">Ide Ringkas / Hint</label>
-                          <textarea
-                            rows={3}
-                            placeholder="Gagasan umum penyelesaian..."
-                            value={sol.brief}
-                            onChange={(e) => handleUpdateSolution(sol.id, 'brief', e.target.value)}
-                            className={`${inputClass} font-mono leading-relaxed`}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">Langkah Rinci (1 per baris)</label>
-                          <textarea
-                            rows={3}
-                            placeholder="Langkah 1: ...&#10;Langkah 2: ..."
-                            value={stepsText[sol.id] || ''}
-                            onChange={(e) => setStepsText({ ...stepsText, [sol.id]: e.target.value })}
-                            className={`${inputClass} font-mono leading-relaxed`}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">Hasil Akhir (LaTeX)</label>
-                        <input
-                          type="text"
-                          placeholder="mis. \frac{1}{3} atau \blacksquare"
-                          value={sol.final_answer || ''}
-                          onChange={(e) => handleUpdateSolution(sol.id, 'final_answer', e.target.value)}
-                          className={`${inputClass} font-mono`}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-              </div>
-
-              <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t border-slate-100 shrink-0 bg-white">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddProblemModal(false);
-                    resetForm();
-                  }}
-                  className="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-xl transition shadow-sm"
-                >
-                  {editingProblemId ? 'Simpan Perubahan' : 'Simpan Soal'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 4: PENJELAJAH FOLDER GOOGLE DRIVE STYLE */}
-      {moveTarget && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-md w-full shadow-xl space-y-4">
-            <div>
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-1">Pindahkan Item</span>
-              <h3 className="text-sm font-bold text-slate-900 truncate">
-                "{moveTarget.name}"
-              </h3>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-2 rounded-xl text-xs font-semibold">
-              <button
-                onClick={() => setMoveModalFolderId(null)}
-                className={`px-2 py-1 rounded text-[11px] ${
-                  moveModalFolderId === null ? 'bg-slate-900 text-white font-bold' : 'text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Root
-              </button>
-              {moveModalBreadcrumbs.map((crumb) => (
-                <div key={crumb.id} className="flex items-center gap-1 text-[11px]">
-                  <span className="text-slate-400">/</span>
-                  <button
-                    onClick={() => setMoveModalFolderId(crumb.id)}
-                    className={`px-2 py-1 rounded ${
-                      moveModalFolderId === crumb.id ? 'bg-blue-600 text-white font-bold' : 'text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {crumb.name}
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div className="border border-slate-200 rounded-xl p-2 max-h-52 overflow-y-auto space-y-1 bg-white">
-              {moveModalSubFolders.length > 0 ? (
-                moveModalSubFolders.map((subF) => (
-                  <div
-                    key={subF.id}
-                    onClick={() => setMoveModalFolderId(subF.id)}
-                    className="p-2.5 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-200 transition cursor-pointer flex items-center justify-between text-xs font-semibold text-slate-800"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <FolderIcon className="w-4 h-4 text-slate-400" />
-                      <span className="truncate">{subF.name}</span>
-                    </div>
-                    <ChevronRightIcon className="w-4 h-4 text-slate-300" />
-                  </div>
-                ))
-              ) : (
-                <div className="p-6 text-center text-xs text-slate-400 italic">
-                  Tidak ada sub-folder di dalam folder ini.
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <span className="text-[11px] text-slate-500">
-                Tujuan: <strong>{moveModalCurrentFolder ? moveModalCurrentFolder.name : 'Root'}</strong>
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setMoveTarget(null)}
-                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={handleConfirmMove}
-                  className="px-4 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition shadow-sm"
-                >
-                  Pindahkan ke Sini
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+      <Footer />
     </div>
   );
 }
