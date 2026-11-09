@@ -221,7 +221,7 @@ export default function HomePage() {
     </Link>
 
     <Link
-      href="/theonotes"
+      href="/notes"
       className="w-full sm:w-auto px-5 py-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold text-sm rounded-2xl shadow-sm transition flex items-center justify-center gap-2 whitespace-nowrap shrink-0"
     >
       <BookOpenIcon className="w-4 h-4 text-indigo-500" />
