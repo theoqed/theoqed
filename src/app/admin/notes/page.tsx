@@ -627,6 +627,7 @@ export default function AdminNotesPage() {
                   <option value="Teori Bilangan">Teori Bilangan</option>
                   <option value="Analisis Real">Analisis Real</option>
                   <option value="Logika">Logika & Himpunan</option>
+                  <option value="Metode Penelitian">Metode Penelitian</option>
                 </select>
               </div>
 

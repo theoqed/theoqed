@@ -133,6 +133,29 @@ function getModuleStyle(topic?: string, title?: string): ModuleStyle {
     };
   }
 
+  if (key.includes('metode') || key.includes('penelitian') || key.includes('metopel')) {
+    return {
+      bg: 'bg-gradient-to-b from-sky-600 via-indigo-700 to-slate-950',
+      accent: 'text-sky-200',
+      // Ilustrasi Geometris Kaca Pembesar & Alur Data Instrumen
+      svg: (
+        <svg className="w-24 h-24 opacity-80 stroke-white fill-none" viewBox="0 0 100 100" strokeWidth="2">
+          {/* Lensa Fokus Geometris */}
+          <circle cx="45" cy="45" r="22" strokeWidth="2.5" className="fill-white/10" />
+          <line x1="61" y1="61" x2="80" y2="80" strokeWidth="3.5" strokeLinecap="round" />
+          
+          {/* Garis Alur Data & Indikator Penelitian di Dalam Lensa */}
+          <line x1="33" y1="38" x2="55" y2="38" strokeWidth="2.5" className="stroke-sky-200" />
+          <line x1="33" y1="46" x2="50" y2="46" strokeWidth="2" opacity="0.8" />
+          <line x1="33" y1="54" x2="43" y2="54" strokeWidth="2" opacity="0.5" />
+          
+          {/* Titik Node Data Evaluasi */}
+          <circle cx="55" cy="46" r="2" className="fill-sky-200 stroke-none" />
+        </svg>
+      ),
+    };
+  }
+
   // Default Theme (Violet / Deep Indigo)
   return {
     bg: 'bg-gradient-to-b from-indigo-600 via-indigo-800 to-slate-950',

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -19,6 +19,14 @@ function CloseIcon({ className = "w-6 h-6" }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
     </svg>
   );
 }
@@ -47,6 +55,30 @@ function SparklesIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
+function AtlasIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+    </svg>
+  );
+}
+
+function MathStudioIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+    </svg>
+  );
+}
+
+function GamepadIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5z" />
+    </svg>
+  );
+}
+
 export function Navbar() {
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
@@ -54,10 +86,14 @@ export function Navbar() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   
-  // State Mobile Sidebar Drawer
+  // Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // State Modal Auth Popup
+  // Desktop Dropdown States
+  const [openDropdown, setOpenDropdown] = useState<'tools' | 'arcade' | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Auth Modal State
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   
@@ -77,7 +113,6 @@ export function Navbar() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
-        
         const photo = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || '';
         setAvatarUrl(photo);
 
@@ -126,9 +161,21 @@ export function Navbar() {
     };
   }, []);
 
-  // Tutup mobile menu setiap kali rute halaman berubah
+  // Event listener untuk menutup dropdown saat klik di luar menu
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Tutup menu saat rute berpindah
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    setOpenDropdown(null);
   }, [pathname]);
 
   const resetForm = () => {
@@ -208,12 +255,45 @@ export function Navbar() {
     setLoadingAuth(false);
   };
 
-  const navLinks = [
+  // Navigasi Utama
+  const mainNavLinks = [
     { name: 'Beranda', href: '/' },
     { name: 'Arsip Soal', href: '/arsip' },
     { name: 'TheoNotes', href: '/notes' },
     { name: 'Try Out', href: '/tryout' },
     { name: 'Bookmarks', href: '/bookmarks' },
+  ];
+
+  // Modul / Studio Tools
+  const studioLinks = [
+    {
+      name: 'Knowledge Atlas',
+      desc: 'Ensiklopedia & Graf Relasi Konsep',
+      href: '/knowledge-atlas',
+      icon: AtlasIcon,
+    },
+    {
+      name: 'Math Studio',
+      desc: 'Komputasi & Grafik 2D/3D Interaktif',
+      href: '/math-studio',
+      icon: MathStudioIcon,
+    },
+  ];
+
+  // Arcade & Games
+  const arcadeLinks = [
+    {
+      name: 'Puzzle Arcade',
+      desc: 'Koleksi Gim Puzzle (2048, dll)',
+      href: '/puzzlearcade',
+      icon: GamepadIcon,
+    },
+    {
+      name: 'Strategy Arena',
+      desc: 'Gim Strategi & Taktik Matematika',
+      href: '/strategy-arena',
+      icon: SparklesIcon,
+    },
   ];
 
   const getInitials = (name: string, mail?: string) => {
@@ -227,13 +307,13 @@ export function Navbar() {
     <>
       {/* HEADER DESKTOP & MOBILE TRIGGER */}
       <header className="border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
           
           <div className="flex items-center gap-3">
-            {/* Tombol Toggle Hamburger (Tampil di Mobile) */}
+            {/* Tombol Hamburger Mobile */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              className="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               aria-label="Buka Menu Navigation"
             >
               <MenuIcon />
@@ -245,17 +325,17 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => {
+          {/* DESKTOP NAVIGATION (Compact Dropdowns) */}
+          <nav ref={dropdownRef} className="hidden lg:flex items-center gap-6">
+            {mainNavLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`text-sm font-medium transition ${
+                  className={`text-xs font-bold transition ${
                     isActive
-                      ? 'text-blue-600 dark:text-blue-400 font-bold'
+                      ? 'text-blue-600 dark:text-blue-400 font-black'
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
@@ -263,9 +343,95 @@ export function Navbar() {
                 </Link>
               );
             })}
+
+            {/* DROPDOWN 1: STUDIOS & TOOLS */}
+            <div className="relative">
+              <button
+                onClick={() => setOpenDropdown(openDropdown === 'tools' ? null : 'tools')}
+                className={`flex items-center gap-1 text-xs font-bold transition cursor-pointer ${
+                  pathname.startsWith('/knowledge-atlas') || pathname.startsWith('/math-studio')
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <span>Studios</span>
+                <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform duration-200 ${openDropdown === 'tools' ? 'rotate-180' : ''}`} />
+              </button>
+
+              {openDropdown === 'tools' && (
+                <div className="absolute top-full left-0 mt-3 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                  {studioLinks.map((item) => {
+                    const Icon = item.icon;
+                    const isSubActive = pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`flex items-start gap-3 p-2.5 rounded-xl transition ${
+                          isSubActive
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        <div className="p-2 rounded-lg bg-emerald-100/60 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 mt-0.5">
+                          <Icon />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold leading-none">{item.name}</p>
+                          <p className="text-[10px] text-slate-400 mt-1">{item.desc}</p>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* DROPDOWN 2: ARCADE & GAMES */}
+            <div className="relative">
+              <button
+                onClick={() => setOpenDropdown(openDropdown === 'arcade' ? null : 'arcade')}
+                className={`flex items-center gap-1 text-xs font-bold transition cursor-pointer ${
+                  pathname.startsWith('/puzzlearcade') || pathname.startsWith('/strategy-arena')
+                    ? 'text-purple-600 dark:text-purple-400'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <span>Arcade</span>
+                <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform duration-200 ${openDropdown === 'arcade' ? 'rotate-180' : ''}`} />
+              </button>
+
+              {openDropdown === 'arcade' && (
+                <div className="absolute top-full left-0 mt-3 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                  {arcadeLinks.map((item) => {
+                    const Icon = item.icon;
+                    const isSubActive = pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`flex items-start gap-3 p-2.5 rounded-xl transition ${
+                          isSubActive
+                            ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400'
+                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        <div className="p-2 rounded-lg bg-purple-100/60 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 mt-0.5">
+                          <Icon />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold leading-none">{item.name}</p>
+                          <p className="text-[10px] text-slate-400 mt-1">{item.desc}</p>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </nav>
 
-          {/* User Account Controls */}
+          {/* USER ACCOUNT CONTROLS */}
           <div className="flex items-center gap-3 shrink-0">
             <ThemeToggle />
 
@@ -302,18 +468,18 @@ export function Navbar() {
                     </div>
                   )}
 
-                  <span className="max-w-[140px] truncate hidden sm:inline font-semibold">
+                  <span className="max-w-[120px] truncate hidden sm:inline font-semibold">
                     {fullName.trim() || user.email?.split('@')[0]}
                   </span>
                 </Link>
 
                 <button
                   onClick={handleLogout}
-                  className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-xl transition text-xs font-bold hidden sm:flex items-center gap-1"
+                  className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-xl transition text-xs font-bold hidden sm:flex items-center gap-1 cursor-pointer"
                   title="Keluar / Logout"
                 >
                   <LogOutIcon />
-                  <span>Keluar</span>
+                  <span className="hidden lg:inline">Keluar</span>
                 </button>
               </div>
             ) : (
@@ -323,7 +489,7 @@ export function Navbar() {
                   resetForm();
                   setShowAuthModal(true);
                 }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition shadow-sm"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition shadow-sm cursor-pointer"
               >
                 Masuk
               </button>
@@ -333,10 +499,10 @@ export function Navbar() {
         </div>
       </header>
 
-      {/* MOBILE SIDEBAR DRAWER WITH SMOOTH ANIMATION */}
-      <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ${isMobileMenuOpen ? 'visible' : 'invisible pointer-events-none'}`}>
+      {/* MOBILE SIDEBAR DRAWER (TERINTEGRASI LENGKAP) */}
+      <div className={`fixed inset-0 z-50 lg:hidden transition-all duration-300 ${isMobileMenuOpen ? 'visible' : 'invisible pointer-events-none'}`}>
         
-        {/* Backdrop Overlay (Fade in / Fade out) */}
+        {/* Backdrop Overlay */}
         <div
           className={`fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
             isMobileMenuOpen ? 'opacity-100' : 'opacity-0'
@@ -344,59 +510,113 @@ export function Navbar() {
           onClick={() => setIsMobileMenuOpen(false)}
         />
 
-        {/* Sidebar Panel Drawer (Slide in / Slide out) */}
+        {/* Sidebar Panel Drawer */}
         <div
           className={`relative flex flex-col w-4/5 max-w-xs bg-white dark:bg-slate-900 h-full p-6 shadow-2xl border-r border-slate-200 dark:border-slate-800 z-10 transform transition-transform duration-300 ease-in-out ${
             isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          {/* Header Sidebar Drawer */}
-          <div className="flex items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800">
+          {/* Header Drawer */}
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
             <Link href="/" className="text-xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-0.5">
               <span className="text-blue-600 dark:text-blue-400">√</span>TheoQED<span className="text-blue-600 dark:text-blue-400">.</span>
             </Link>
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             >
               <CloseIcon />
             </button>
           </div>
 
-          {/* Menu Navigasi Utama Sidebar */}
-          <nav className="flex-1 py-6 space-y-2 overflow-y-auto">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block px-3 mb-2">
-              Menu Utama
-            </span>
+          {/* Navigation Links Grouped */}
+          <nav className="flex-1 py-4 space-y-6 overflow-y-auto">
+            {/* GRUP 1: UTAMA */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block px-3 mb-1">
+                Akademik
+              </span>
+              {mainNavLinks.map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                      isActive
+                        ? 'bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <span>{link.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
 
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition ${
-                    isActive
-                      ? 'bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50'
-                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                  }`}
-                >
-                  <span>{link.name}</span>
-                </Link>
-              );
-            })}
+            {/* GRUP 2: STUDIOS */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block px-3 mb-1">
+                TheoQED Studios
+              </span>
+              {studioLinks.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                      isActive
+                        ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 text-emerald-500" />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
 
-            {/* Tautan Khusus Admin Portal di Mobile jika Pengguna Admin */}
+            {/* GRUP 3: ARCADE */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block px-3 mb-1">
+                Arcade & Games
+              </span>
+              {arcadeLinks.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                      isActive
+                        ? 'bg-purple-50 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 text-purple-500" />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* ADMIN LINK MOBILE */}
             {user && isAdmin && (
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block px-3 mb-2">
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block px-3 mb-1">
                   Administrator
                 </span>
                 <Link
                   href="/admin"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50"
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400"
                 >
                   <ShieldCheckIcon />
                   <span>Admin Portal</span>
@@ -405,7 +625,7 @@ export function Navbar() {
             )}
           </nav>
 
-          {/* Account Status Footer Sidebar Mobile */}
+          {/* Account Status Footer Mobile */}
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
             {user ? (
               <div className="space-y-3">
@@ -434,7 +654,7 @@ export function Navbar() {
 
                 <button
                   onClick={handleLogout}
-                  className="w-full py-2.5 px-4 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-950 text-red-600 dark:text-red-400 text-xs font-bold rounded-2xl transition border border-red-200/60 dark:border-red-900/40 flex items-center justify-center gap-2"
+                  className="w-full py-2.5 px-4 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-950 text-red-600 dark:text-red-400 text-xs font-bold rounded-2xl transition border border-red-200/60 dark:border-red-900/40 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <LogOutIcon />
                   <span>Keluar Akun</span>
@@ -448,7 +668,7 @@ export function Navbar() {
                   resetForm();
                   setShowAuthModal(true);
                 }}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-2xl transition shadow-md flex items-center justify-center gap-2"
+                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-2xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
               >
                 <SparklesIcon />
                 <span>Masuk / Daftar Akun</span>
@@ -483,7 +703,7 @@ export function Navbar() {
               </div>
               <button
                 onClick={() => setShowAuthModal(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 ✕
               </button>
@@ -536,7 +756,7 @@ export function Navbar() {
             <button
               onClick={handleGoogleLogin}
               disabled={loadingAuth}
-              className="w-full py-2.5 px-4 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-2xl border border-slate-200/80 dark:border-slate-800 transition flex items-center justify-center gap-2.5 shadow-sm"
+              className="w-full py-2.5 px-4 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-2xl border border-slate-200/80 dark:border-slate-800 transition flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -594,7 +814,7 @@ export function Navbar() {
               <button
                 type="submit"
                 disabled={loadingAuth}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition shadow-md mt-2 flex items-center justify-center gap-2"
+                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition shadow-md mt-2 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loadingAuth ? (
                   <span>Memproses...</span>
@@ -614,7 +834,7 @@ export function Navbar() {
                     setAuthError('');
                     setAuthSuccess('');
                   }}
-                  className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                  className="font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                 >
                   {authMode === 'login' ? 'Daftar di sini' : 'Masuk di sini'}
                 </button>
