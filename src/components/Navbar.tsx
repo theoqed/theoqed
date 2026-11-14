@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
-// --- SVG ICONS ---
-function MenuIcon({ className = "w-6 h-6" }: { className?: string }) {
+// --- SVG ICONS (Khusus Mobile Drawer, Controls & Modal) ---
+function MenuIcon({ className = 'w-6 h-6' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -15,7 +16,7 @@ function MenuIcon({ className = "w-6 h-6" }: { className?: string }) {
   );
 }
 
-function CloseIcon({ className = "w-6 h-6" }: { className?: string }) {
+function CloseIcon({ className = 'w-6 h-6' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -23,15 +24,55 @@ function CloseIcon({ className = "w-6 h-6" }: { className?: string }) {
   );
 }
 
-function ChevronDownIcon({ className = "w-4 h-4" }: { className?: string }) {
+function HomeIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
     </svg>
   );
 }
 
-function LogOutIcon({ className = "w-4 h-4" }: { className?: string }) {
+function ClipboardCheckIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  );
+}
+
+function ArchiveIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+    </svg>
+  );
+}
+
+function NotesIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+    </svg>
+  );
+}
+
+function TheoremIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  );
+}
+
+function BookmarkIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+    </svg>
+  );
+}
+
+function LogOutIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -39,7 +80,7 @@ function LogOutIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function ShieldCheckIcon({ className = "w-4 h-4" }: { className?: string }) {
+function ShieldCheckIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -47,7 +88,7 @@ function ShieldCheckIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function SparklesIcon({ className = "w-4 h-4" }: { className?: string }) {
+function SparklesIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
@@ -55,27 +96,11 @@ function SparklesIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function AtlasIcon({ className = "w-4 h-4" }: { className?: string }) {
+function BetaBadge() {
   return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-    </svg>
-  );
-}
-
-function MathStudioIcon({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-    </svg>
-  );
-}
-
-function GamepadIcon({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5z" />
-    </svg>
+    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-amber-100/90 dark:bg-amber-950/90 text-amber-700 dark:text-amber-300 border border-amber-300/70 dark:border-amber-800/70 leading-none shrink-0">
+      BETA
+    </span>
   );
 }
 
@@ -85,23 +110,19 @@ export function Navbar() {
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
-  
+
   // Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // Desktop Dropdown States
-  const [openDropdown, setOpenDropdown] = useState<'tools' | 'arcade' | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Auth Modal State
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  
+
   // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [registerName, setRegisterName] = useState('');
-  
+
   const [loadingAuth, setLoadingAuth] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authSuccess, setAuthSuccess] = useState('');
@@ -133,7 +154,7 @@ export function Navbar() {
 
     checkAuth();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event: AuthChangeEvent, session: Session | null) => {
       if (session?.user) {
         setUser(session.user);
         const photo = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || '';
@@ -161,21 +182,9 @@ export function Navbar() {
     };
   }, []);
 
-  // Event listener untuk menutup dropdown saat klik di luar menu
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdown(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Tutup menu saat rute berpindah
+  // Tutup menu mobile saat rute berpindah
   useEffect(() => {
     setIsMobileMenuOpen(false);
-    setOpenDropdown(null);
   }, [pathname]);
 
   const resetForm = () => {
@@ -255,46 +264,19 @@ export function Navbar() {
     setLoadingAuth(false);
   };
 
-  // Navigasi Utama
-  const mainNavLinks = [
-    { name: 'Beranda', href: '/' },
-    { name: 'Arsip Soal', href: '/arsip' },
-    { name: 'TheoNotes', href: '/notes' },
-    { name: 'Try Out', href: '/tryout' },
-    { name: 'Bookmarks', href: '/bookmarks' },
+  const navLinks = [
+    { name: 'Beranda', href: '/', icon: HomeIcon, exact: true },
+    { name: 'Arsip Soal', href: '/arsip', icon: ArchiveIcon },
+    { name: 'TheoNotes', href: '/notes', icon: NotesIcon },
+    { name: 'Teorema', href: '/teorema', icon: TheoremIcon },
+    { name: 'Try Out', href: '/tryout', icon: ClipboardCheckIcon, isBeta: true },
+    { name: 'Bookmarks', href: '/bookmarks', icon: BookmarkIcon },
   ];
 
-  // Modul / Studio Tools
-  const studioLinks = [
-    {
-      name: 'Knowledge Atlas',
-      desc: 'Ensiklopedia & Graf Relasi Konsep',
-      href: '/knowledge-atlas',
-      icon: AtlasIcon,
-    },
-    {
-      name: 'Math Studio',
-      desc: 'Komputasi & Grafik 2D/3D Interaktif',
-      href: '/math-studio',
-      icon: MathStudioIcon,
-    },
-  ];
-
-  // Arcade & Games
-  const arcadeLinks = [
-    {
-      name: 'Puzzle Arcade',
-      desc: 'Koleksi Gim Puzzle (2048, dll)',
-      href: '/puzzlearcade',
-      icon: GamepadIcon,
-    },
-    {
-      name: 'Strategy Arena',
-      desc: 'Gim Strategi & Taktik Matematika',
-      href: '/strategy-arena',
-      icon: SparklesIcon,
-    },
-  ];
+  const isLinkActive = (href: string, exact?: boolean) => {
+    if (exact) return pathname === href;
+    return pathname.startsWith(href);
+  };
 
   const getInitials = (name: string, mail?: string) => {
     const text = name.trim() || (mail ? mail.split('@')[0] : 'U');
@@ -308,12 +290,12 @@ export function Navbar() {
       {/* HEADER DESKTOP & MOBILE TRIGGER */}
       <header className="border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
-          
+
           <div className="flex items-center gap-3">
             {/* Tombol Hamburger Mobile */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              className="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               aria-label="Buka Menu Navigation"
             >
               <MenuIcon />
@@ -325,110 +307,28 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* DESKTOP NAVIGATION (Compact Dropdowns) */}
-          <nav ref={dropdownRef} className="hidden lg:flex items-center gap-6">
-            {mainNavLinks.map((link) => {
-              const isActive = pathname === link.href;
+          {/* DESKTOP NAVIGATION (Clean Typography, Tanpa Ikon) */}
+          <nav className="hidden lg:flex items-center gap-7">
+            {navLinks.map((item) => {
+              const active = isLinkActive(item.href, item.exact);
               return (
                 <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`text-xs font-bold transition ${
-                    isActive
-                      ? 'text-blue-600 dark:text-blue-400 font-black'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  key={item.href}
+                  href={item.href}
+                  className={`relative py-1 flex items-center gap-1.5 text-xs tracking-wide transition ${
+                    active
+                      ? 'text-blue-600 dark:text-blue-400 font-extrabold'
+                      : 'text-slate-600 dark:text-slate-300 font-semibold hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  {link.name}
+                  <span>{item.name}</span>
+                  {item.isBeta && <BetaBadge />}
+                  {active && (
+                    <span className="absolute -bottom-1 left-0 right-0 h-0.5 rounded-full bg-blue-600 dark:bg-blue-400" />
+                  )}
                 </Link>
               );
             })}
-
-            {/* DROPDOWN 1: STUDIOS & TOOLS */}
-            <div className="relative">
-              <button
-                onClick={() => setOpenDropdown(openDropdown === 'tools' ? null : 'tools')}
-                className={`flex items-center gap-1 text-xs font-bold transition cursor-pointer ${
-                  pathname.startsWith('/knowledge-atlas') || pathname.startsWith('/math-studio')
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <span>Studios</span>
-                <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform duration-200 ${openDropdown === 'tools' ? 'rotate-180' : ''}`} />
-              </button>
-
-              {openDropdown === 'tools' && (
-                <div className="absolute top-full left-0 mt-3 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
-                  {studioLinks.map((item) => {
-                    const Icon = item.icon;
-                    const isSubActive = pathname.startsWith(item.href);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`flex items-start gap-3 p-2.5 rounded-xl transition ${
-                          isSubActive
-                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
-                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
-                        }`}
-                      >
-                        <div className="p-2 rounded-lg bg-emerald-100/60 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 mt-0.5">
-                          <Icon />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold leading-none">{item.name}</p>
-                          <p className="text-[10px] text-slate-400 mt-1">{item.desc}</p>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* DROPDOWN 2: ARCADE & GAMES */}
-            <div className="relative">
-              <button
-                onClick={() => setOpenDropdown(openDropdown === 'arcade' ? null : 'arcade')}
-                className={`flex items-center gap-1 text-xs font-bold transition cursor-pointer ${
-                  pathname.startsWith('/puzzlearcade') || pathname.startsWith('/strategy-arena')
-                    ? 'text-purple-600 dark:text-purple-400'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <span>Arcade</span>
-                <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform duration-200 ${openDropdown === 'arcade' ? 'rotate-180' : ''}`} />
-              </button>
-
-              {openDropdown === 'arcade' && (
-                <div className="absolute top-full left-0 mt-3 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
-                  {arcadeLinks.map((item) => {
-                    const Icon = item.icon;
-                    const isSubActive = pathname.startsWith(item.href);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`flex items-start gap-3 p-2.5 rounded-xl transition ${
-                          isSubActive
-                            ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400'
-                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
-                        }`}
-                      >
-                        <div className="p-2 rounded-lg bg-purple-100/60 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 mt-0.5">
-                          <Icon />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold leading-none">{item.name}</p>
-                          <p className="text-[10px] text-slate-400 mt-1">{item.desc}</p>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           </nav>
 
           {/* USER ACCOUNT CONTROLS */}
@@ -440,7 +340,7 @@ export function Navbar() {
                 {isAdmin && (
                   <Link
                     href="/admin"
-                    className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-full border border-indigo-200 dark:border-indigo-800 transition hidden sm:flex items-center gap-1.5 shadow-sm"
+                    className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-full border border-indigo-200 dark:border-indigo-800 transition hidden sm:flex items-center gap-1.5 shadow-2xs"
                   >
                     <ShieldCheckIcon />
                     <span>Admin Portal</span>
@@ -468,7 +368,7 @@ export function Navbar() {
                     </div>
                   )}
 
-                  <span className="max-w-[120px] truncate hidden sm:inline font-semibold">
+                  <span className="max-w-30 truncate hidden sm:inline font-semibold">
                     {fullName.trim() || user.email?.split('@')[0]}
                   </span>
                 </Link>
@@ -489,7 +389,7 @@ export function Navbar() {
                   resetForm();
                   setShowAuthModal(true);
                 }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition shadow-sm cursor-pointer"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition shadow-2xs cursor-pointer"
               >
                 Masuk
               </button>
@@ -499,9 +399,9 @@ export function Navbar() {
         </div>
       </header>
 
-      {/* MOBILE SIDEBAR DRAWER (TERINTEGRASI LENGKAP) */}
+      {/* MOBILE SIDEBAR DRAWER (Tetap Menggunakan Ikon agar Mudah Dipindai) */}
       <div className={`fixed inset-0 z-50 lg:hidden transition-all duration-300 ${isMobileMenuOpen ? 'visible' : 'invisible pointer-events-none'}`}>
-        
+
         {/* Backdrop Overlay */}
         <div
           className={`fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${
@@ -529,88 +429,39 @@ export function Navbar() {
             </button>
           </div>
 
-          {/* Navigation Links Grouped */}
-          <nav className="flex-1 py-4 space-y-6 overflow-y-auto">
-            {/* GRUP 1: UTAMA */}
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block px-3 mb-1">
-                Akademik
-              </span>
-              {mainNavLinks.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
-                      isActive
-                        ? 'bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                    }`}
-                  >
-                    <span>{link.name}</span>
-                  </Link>
-                );
-              })}
-            </div>
+          {/* Navigation Links Mobile */}
+          <nav className="flex-1 py-5 space-y-1.5 overflow-y-auto">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block px-3 mb-2">
+              Menu Utama
+            </span>
 
-            {/* GRUP 2: STUDIOS */}
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block px-3 mb-1">
-                TheoQED Studios
-              </span>
-              {studioLinks.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
-                      isActive
-                        ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 text-emerald-500" />
-                    <span>{item.name}</span>
-                  </Link>
-                );
-              })}
-            </div>
-
-            {/* GRUP 3: ARCADE */}
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block px-3 mb-1">
-                Arcade & Games
-              </span>
-              {arcadeLinks.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
-                      isActive
-                        ? 'bg-purple-50 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 text-purple-500" />
-                    <span>{item.name}</span>
-                  </Link>
-                );
-              })}
-            </div>
+            {navLinks.map((item) => {
+              const Icon = item.icon;
+              const active = isLinkActive(item.href, item.exact);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                    active
+                      ? 'bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon className="w-4 h-4 text-blue-500 shrink-0" />
+                    <span className="truncate">{item.name}</span>
+                  </div>
+                  {item.isBeta && <BetaBadge />}
+                </Link>
+              );
+            })}
 
             {/* ADMIN LINK MOBILE */}
             {user && isAdmin && (
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block px-3 mb-1">
+              <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block px-3 mb-2">
                   Administrator
                 </span>
                 <Link
@@ -629,7 +480,11 @@ export function Navbar() {
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
             {user ? (
               <div className="space-y-3">
-                <div className="flex items-center gap-3 px-3 py-2 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+                <Link
+                  href="/profile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200/60 dark:border-slate-800 hover:border-blue-400 transition"
+                >
                   {avatarUrl ? (
                     <img
                       src={avatarUrl}
@@ -650,7 +505,7 @@ export function Navbar() {
                       {user.email}
                     </p>
                   </div>
-                </div>
+                </Link>
 
                 <button
                   onClick={handleLogout}
@@ -683,8 +538,8 @@ export function Navbar() {
       {showAuthModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden">
-            
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600" />
+
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r from-blue-600 via-indigo-600 to-purple-600" />
 
             <div className="flex items-start justify-between">
               <div className="space-y-1">
@@ -717,9 +572,9 @@ export function Navbar() {
                   setAuthError('');
                   setAuthSuccess('');
                 }}
-                className={`flex-1 py-2 rounded-xl transition ${
+                className={`flex-1 py-2 rounded-xl transition cursor-pointer ${
                   authMode === 'login'
-                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
               >
@@ -732,9 +587,9 @@ export function Navbar() {
                   setAuthError('');
                   setAuthSuccess('');
                 }}
-                className={`flex-1 py-2 rounded-xl transition ${
+                className={`flex-1 py-2 rounded-xl transition cursor-pointer ${
                   authMode === 'register'
-                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
               >
@@ -756,7 +611,7 @@ export function Navbar() {
             <button
               onClick={handleGoogleLogin}
               disabled={loadingAuth}
-              className="w-full py-2.5 px-4 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-2xl border border-slate-200/80 dark:border-slate-800 transition flex items-center justify-center gap-2.5 shadow-sm cursor-pointer"
+              className="w-full py-2.5 px-4 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-2xl border border-slate-200/80 dark:border-slate-800 transition flex items-center justify-center gap-2.5 shadow-2xs cursor-pointer"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

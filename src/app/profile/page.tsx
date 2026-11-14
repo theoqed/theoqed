@@ -5,9 +5,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import {
+  getMembershipState,
+  getRemainingDays,
+  formatIndonesianDate,
+  MembershipState,
+} from '@/lib/premium';
 
 // --- SVG CUSTOM ICONS ---
-function ArrowLeftIcon({ className = "w-4 h-4" }: { className?: string }) {
+function ArrowLeftIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -15,7 +21,7 @@ function ArrowLeftIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function CheckIcon({ className = "w-4 h-4" }: { className?: string }) {
+function CheckIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
@@ -23,7 +29,7 @@ function CheckIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function UserIcon({ className = "w-4 h-4" }: { className?: string }) {
+function UserIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -31,7 +37,7 @@ function UserIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function DocumentCheckIcon({ className = "w-4 h-4" }: { className?: string }) {
+function DocumentCheckIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -39,7 +45,7 @@ function DocumentCheckIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function ClockIcon({ className = "w-4 h-4" }: { className?: string }) {
+function ClockIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -47,7 +53,7 @@ function ClockIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function ShieldCheckIcon({ className = "w-4 h-4" }: { className?: string }) {
+function ShieldCheckIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -55,7 +61,7 @@ function ShieldCheckIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function LogOutIcon({ className = "w-4 h-4" }: { className?: string }) {
+function LogOutIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -63,7 +69,7 @@ function LogOutIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function LockIcon({ className = "w-4 h-4" }: { className?: string }) {
+function LockIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -71,10 +77,18 @@ function LockIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function SparklesIcon({ className = "w-4 h-4" }: { className?: string }) {
+function SparklesIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4m0 0v4m0-4h4m-4 0H1m15 4v4m0 0v4m0-4h4m-4 0h-4M10 3v4m0 0v4m0-4h4m-4 0H6" />
+    </svg>
+  );
+}
+
+function CrownIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3l3.5 6L12 4l3.5 5L19 3l-1 14H6L5 3zm1 17h12" />
     </svg>
   );
 }
@@ -87,7 +101,12 @@ export default function ProfilePage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  
+
+  // State Keanggotaan Premium
+  const [membershipState, setMembershipState] = useState<MembershipState>('free');
+  const [premiumUntil, setPremiumUntil] = useState<string | null>(null);
+  const [copiedRequest, setCopiedRequest] = useState(false);
+
   // State Statistik Kontribusi
   const [stats, setStats] = useState({ total: 0, approved: 0, pending: 0 });
 
@@ -100,17 +119,16 @@ export default function ProfilePage() {
       setLoading(true);
 
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (session?.user) {
         const u = session.user;
         setUser(u);
         setEmail(u.email || '');
         setAvatarUrl(u.user_metadata?.avatar_url || '');
 
-        // 1. Ambil nama dari tabel profiles
         const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name, avatar_url')
+          .select('full_name, avatar_url, is_premium, premium_until')
           .eq('id', u.id)
           .maybeSingle();
 
@@ -124,7 +142,9 @@ export default function ProfilePage() {
           setAvatarUrl(profile.avatar_url);
         }
 
-        // 2. Ambil statistik kontribusi dari solution_submissions
+        setPremiumUntil(profile?.premium_until || null);
+        setMembershipState(getMembershipState(profile));
+
         const { data: submissions } = await supabase
           .from('solution_submissions')
           .select('status')
@@ -132,8 +152,8 @@ export default function ProfilePage() {
 
         if (submissions) {
           const total = submissions.length;
-          const approved = submissions.filter(s => s.status === 'approved').length;
-          const pending = submissions.filter(s => s.status === 'pending').length;
+          const approved = submissions.filter((s) => s.status === 'approved').length;
+          const pending = submissions.filter((s) => s.status === 'pending').length;
           setStats({ total, approved, pending });
         }
       }
@@ -152,18 +172,20 @@ export default function ProfilePage() {
     setMessage(null);
 
     try {
-      // 1. Update/insert ke tabel profiles
       const { error: profileError } = await supabase
         .from('profiles')
-        .upsert({
-          id: user.id,
-          full_name: fullName.trim(),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'id' });
+        .upsert(
+          {
+            id: user.id,
+            email: user.email,
+            full_name: fullName.trim(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
 
       if (profileError) throw profileError;
 
-      // 2. Update user_metadata pada Supabase Auth
       const { error: authError } = await supabase.auth.updateUser({
         data: { full_name: fullName.trim() },
       });
@@ -176,6 +198,13 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleCopyUpgradeFormat = async () => {
+    const text = `Halo Admin TheoQED (@davemarcellino_), saya ingin mengaktifkan akun TheoQED Premium.\nNama: ${fullName || '-'}\nEmail: ${email}`;
+    await navigator.clipboard.writeText(text);
+    setCopiedRequest(true);
+    setTimeout(() => setCopiedRequest(false), 3000);
   };
 
   const handleLogout = async () => {
@@ -194,10 +223,10 @@ export default function ProfilePage() {
   };
 
   const approvalRate = stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0;
+  const remainingDays = getRemainingDays(premiumUntil);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans pb-24 transition-colors duration-200">
-      
       {/* Header Navigation */}
       <header className="border-b border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
@@ -221,7 +250,7 @@ export default function ProfilePage() {
             {user && (
               <button
                 onClick={handleLogout}
-                className="text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 px-3 py-1.5 rounded-xl transition border border-red-200/60 dark:border-red-900/40 flex items-center gap-1.5"
+                className="text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 px-3 py-1.5 rounded-xl transition border border-red-200/60 dark:border-red-900/40 flex items-center gap-1.5 cursor-pointer"
                 title="Keluar Akun"
               >
                 <LogOutIcon />
@@ -235,7 +264,7 @@ export default function ProfilePage() {
       {/* Main Content Container */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 mt-8 space-y-6">
         {!user && !loading ? (
-          <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-4 max-w-md mx-auto shadow-sm">
+          <div className="bg-white dark:bg-slate-900 p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-4 max-w-md mx-auto shadow-2xs">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 mx-auto flex items-center justify-center border border-indigo-200 dark:border-indigo-900">
               <LockIcon className="w-6 h-6" />
             </div>
@@ -250,18 +279,15 @@ export default function ProfilePage() {
         ) : loading ? (
           <div className="py-24 text-center text-xs font-bold text-slate-400 animate-pulse flex flex-col items-center justify-center gap-2">
             <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-            <span>Memuat data profil & statistik kontribusi...</span>
+            <span>Memuat data profil &amp; status keanggotaan...</span>
           </div>
         ) : (
           <div className="space-y-6">
-            
             {/* KARTU 1: HEADER IDENTITAS PENGGUNA & AVATAR */}
-            <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs relative overflow-hidden">
               <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 dark:bg-indigo-500/5 rounded-full filter blur-3xl pointer-events-none" />
 
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left relative z-10">
-                
-                {/* AVATAR PHOTO ATAU INITIALS */}
                 {avatarUrl ? (
                   <img
                     src={avatarUrl}
@@ -269,7 +295,7 @@ export default function ProfilePage() {
                     className="w-20 h-20 rounded-2xl object-cover shrink-0 border-2 border-indigo-200 dark:border-indigo-900 shadow-md"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-600 text-white flex items-center justify-center font-black text-2xl shadow-lg shrink-0">
+                  <div className="w-20 h-20 rounded-2xl bg-linear-to-tr from-indigo-600 via-purple-600 to-pink-600 text-white flex items-center justify-center font-black text-2xl shadow-lg shrink-0">
                     {getInitials(fullName, email)}
                   </div>
                 )}
@@ -279,31 +305,44 @@ export default function ProfilePage() {
                     <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white truncate">
                       {fullName.trim() || 'Pengguna TheoQED'}
                     </h1>
-                    <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 rounded-md border border-indigo-200 dark:border-indigo-900 inline-flex items-center gap-1">
-                      <ShieldCheckIcon className="w-3 h-3" />
-                      <span>Kontributor</span>
-                    </span>
+                    {membershipState === 'active' ? (
+                      <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-950/80 rounded-md border border-amber-300/70 dark:border-amber-800 inline-flex items-center gap-1">
+                        <CrownIcon className="w-3 h-3" />
+                        <span>Premium Member</span>
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 rounded-md border border-indigo-200 dark:border-indigo-900 inline-flex items-center gap-1">
+                        <ShieldCheckIcon className="w-3 h-3" />
+                        <span>Kontributor</span>
+                      </span>
+                    )}
                   </div>
 
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-mono truncate">
                     {email}
                   </p>
-                  
+
                   <div className="flex items-center justify-center sm:justify-start gap-3 pt-1 text-[11px] text-slate-400 dark:text-slate-500">
-                    <span>ID Akun: <code className="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{user.id.slice(0, 16)}...</code></span>
+                    <span>
+                      ID Akun:{' '}
+                      <code className="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                        {user.id.slice(0, 16)}...
+                      </code>
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* STATISTIK RINGKAS KONTRIBUSI */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
-                
                 <div className="bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-2xl border border-slate-200/70 dark:border-slate-800 text-center space-y-1">
                   <div className="text-slate-400 dark:text-slate-500 flex justify-center">
                     <UserIcon className="w-4 h-4" />
                   </div>
                   <span className="text-xl font-black text-slate-900 dark:text-white block">{stats.total}</span>
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Total Usulan</span>
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                    Total Usulan
+                  </span>
                 </div>
 
                 <div className="bg-emerald-50/50 dark:bg-emerald-950/30 p-3.5 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 text-center space-y-1">
@@ -311,7 +350,9 @@ export default function ProfilePage() {
                     <DocumentCheckIcon className="w-4 h-4" />
                   </div>
                   <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 block">{stats.approved}</span>
-                  <span className="text-[10px] font-bold text-emerald-600/80 dark:text-emerald-400/80 uppercase tracking-wider block">Disetujui</span>
+                  <span className="text-[10px] font-bold text-emerald-600/80 dark:text-emerald-400/80 uppercase tracking-wider block">
+                    Disetujui
+                  </span>
                 </div>
 
                 <div className="bg-amber-50/50 dark:bg-amber-950/30 p-3.5 rounded-2xl border border-amber-100 dark:border-amber-900/40 text-center space-y-1">
@@ -319,7 +360,9 @@ export default function ProfilePage() {
                     <ClockIcon className="w-4 h-4" />
                   </div>
                   <span className="text-xl font-black text-amber-600 dark:text-amber-400 block">{stats.pending}</span>
-                  <span className="text-[10px] font-bold text-amber-600/80 dark:text-amber-400/80 uppercase tracking-wider block">Menunggu</span>
+                  <span className="text-[10px] font-bold text-amber-600/80 dark:text-amber-400/80 uppercase tracking-wider block">
+                    Menunggu
+                  </span>
                 </div>
 
                 <div className="bg-indigo-50/50 dark:bg-indigo-950/30 p-3.5 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 text-center space-y-1">
@@ -327,14 +370,68 @@ export default function ProfilePage() {
                     <SparklesIcon className="w-4 h-4" />
                   </div>
                   <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 block">{approvalRate}%</span>
-                  <span className="text-[10px] font-bold text-indigo-600/80 dark:text-indigo-400/80 uppercase tracking-wider block">Akurasi Acc</span>
+                  <span className="text-[10px] font-bold text-indigo-600/80 dark:text-indigo-400/80 uppercase tracking-wider block">
+                    Akurasi Acc
+                  </span>
                 </div>
-
               </div>
             </div>
 
-            {/* KARTU 2: FORMULIR EDIT PROFIL */}
-            <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+            {/* KARTU 2: STATUS KEANGGOTAAN & AKSES PREMIUM */}
+            <div
+              className={`p-6 sm:p-8 rounded-3xl border shadow-2xs space-y-4 ${
+                membershipState === 'active'
+                  ? 'bg-linear-to-br from-amber-50/90 via-white to-amber-50/40 dark:from-amber-950/40 dark:via-slate-900 dark:to-slate-900 border-amber-200/90 dark:border-amber-800/70'
+                  : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800'
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <CrownIcon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                      Status Paket Akun
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white">
+                    {membershipState === 'active'
+                      ? 'TheoQED Premium (Aktif)'
+                      : membershipState === 'expired'
+                      ? 'Masa Aktif Premium Berakhir'
+                      : 'TheoQED Reguler (Gratis)'}
+                  </h2>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    {membershipState === 'active'
+                      ? `Berlaku hingga ${formatIndonesianDate(premiumUntil)}${
+                          remainingDays !== null ? ` • Tersisa ${remainingDays} hari` : ''
+                        }.`
+                      : membershipState === 'expired'
+                      ? `Langganan terakhir berakhir pada ${formatIndonesianDate(premiumUntil)}. Perpanjang untuk membuka kembali Course & materi eksklusif.`
+                      : 'Akses penuh ke seluruh Course terstruktur, Try Out CBT eksklusif, serta folder arsip soal & modul TheoNotes terkunci.'}
+                  </p>
+                </div>
+
+                {membershipState !== 'active' && (
+                  <button
+                    type="button"
+                    onClick={handleCopyUpgradeFormat}
+                    className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition shadow-2xs shrink-0 cursor-pointer"
+                  >
+                    {copiedRequest ? '✓ Format Aktivasi Disalin!' : 'Salin Format Aktivasi'}
+                  </button>
+                )}
+              </div>
+
+              {membershipState !== 'active' && (
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/70 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Untuk mengaktifkan status Premium, klik <strong>Salin Format Aktivasi</strong> lalu kirimkan ke admin via Instagram{' '}
+                  <span className="font-bold text-slate-700 dark:text-slate-200">@davemarcellino_</span> agar akunmu langsung diaktifkan.
+                </div>
+              )}
+            </div>
+
+            {/* KARTU 3: FORMULIR EDIT PROFIL */}
+            <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-6">
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">
                   Informasi Profil Publik
@@ -345,7 +442,6 @@ export default function ProfilePage() {
               </div>
 
               <form onSubmit={handleUpdateProfile} className="space-y-5">
-                
                 {message && (
                   <div
                     className={`p-4 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
@@ -398,7 +494,7 @@ export default function ProfilePage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow disabled:opacity-50 flex items-center gap-2"
+                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                   >
                     {saving ? (
                       <>
@@ -410,14 +506,11 @@ export default function ProfilePage() {
                     )}
                   </button>
                 </div>
-
               </form>
             </div>
-
           </div>
         )}
       </main>
-
     </div>
   );
 }

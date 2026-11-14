@@ -1,3 +1,15 @@
+export interface UserProfile {
+  id: string;
+  email?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  is_admin?: boolean;
+  is_premium?: boolean;
+  premium_until?: string | null;
+  updated_at?: string | null;
+}
+
 export interface SolutionItem {
   id: string;
   title: string;       // misal: "Solusi 1 (Resmi)", "Solusi Alternatif"
@@ -9,30 +21,26 @@ export interface SolutionItem {
 
 export interface Problem {
   id: string;
+  prob_slug?: string;
   title: string;
   competition: string;
   year: number;
   level: string;
   topic: string;
+  category?: string;
+  section?: string;
   statement: string;
   solutions: SolutionItem[];
   folder_id?: string | null;
   order_index: number;
+  is_premium?: boolean;
 }
 
 export interface Folder {
   id: string;
   name: string;
   parent_id?: string | null;
-}
-
-export interface Problem {
-  id: string;
-  title: string;
-  statement: string;
-  category: string;
-  section?: string; // Contoh: "Isian Singkat", "Uraian / Essay", "Bagian A"
-  // ... properti lainnya
+  is_premium?: boolean;
 }
 
 export interface Solution {
@@ -60,6 +68,7 @@ export interface Note {
   pattern_type: 'algebra' | 'calculus' | 'geometry' | 'number_theory';
   gradient_theme: string;
   order_index: number;
+  is_premium?: boolean;
   created_at?: string;
 }
 
