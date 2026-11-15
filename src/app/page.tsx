@@ -1,23 +1,54 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Problem } from '@/types';
-import { Theorem } from '@/types/theorem';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { MathText } from '@/components/MathText';
+import { NoteModuleCard, NoteModuleCardData } from '@/components/NoteModuleCard';
 
-interface NotePreview {
-  id: string | number;
-  slug?: string;
-  title?: string;
-  subject?: string;
+interface CoursePreview {
+  id: string;
+  title: string;
+  slug: string;
   category?: string;
+  level?: string;
   description?: string;
-  summary?: string;
-  created_at?: string;
+  instructor_name?: string;
+  is_free?: boolean;
+  price?: number | null;
+  thumbnail_url?: string | null;
+  cover_url?: string | null;
+  cover_image?: string | null;
+  image_url?: string | null;
+  banner_url?: string | null;
+  [key: string]: unknown;
+}
+
+function resolveMediaUrl(record: Record<string, unknown>): string {
+  const priorityKeys = [
+    'cover_url',
+    'cover_image_url',
+    'cover_image',
+    'thumbnail_url',
+    'banner_url',
+    'image_url',
+    'cover',
+    'thumbnail',
+    'banner',
+    'image',
+  ];
+
+  for (const key of priorityKeys) {
+    const val = record[key];
+    if (typeof val === 'string' && val.trim().length > 0) {
+      return val.trim();
+    }
+  }
+
+  return '';
 }
 
 // --- SVG ICONS ---
@@ -29,7 +60,15 @@ function SparklesIcon({ className = 'w-4 h-4' }: { className?: string }) {
   );
 }
 
-function FolderIcon({ className = 'w-5 h-5' }: { className?: string }) {
+function AcademicCapIcon({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+    </svg>
+  );
+}
+
+function FolderIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -61,6 +100,22 @@ function ClipboardCheckIcon({ className = 'w-5 h-5' }: { className?: string }) {
   );
 }
 
+function CrownIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3l3.5 6L12 4l3.5 5L19 3l-1 14H6L5 3zm1 17h12" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.4" d="M5 13l4 4L19 7" />
+    </svg>
+  );
+}
+
 function ArrowRightIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,503 +124,497 @@ function ArrowRightIcon({ className = 'w-4 h-4' }: { className?: string }) {
   );
 }
 
-// --- CUSTOM GEOMETRIC & MATHEMATICAL HERO ILLUSTRATION ---
-function HeroMathIllustration() {
-  return (
-    <div className="relative w-full max-w-lg mx-auto select-none">
-      {/* Glow halus di belakang ilustrasi */}
-      <div className="absolute -inset-4 bg-linear-to-tr from-blue-500/15 via-indigo-500/10 to-sky-400/15 rounded-3xl blur-2xl pointer-events-none" />
+// --- KARTU COURSE ---
+function CourseCard({ course }: { course: CoursePreview }) {
+  const [imgError, setImgError] = useState(false);
+  const coverSrc = resolveMediaUrl(course);
 
-      <div className="relative bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200/90 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl shadow-slate-200/40 dark:shadow-none overflow-hidden">
-        {/* Header Bar Minimalis */}
-        <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 dark:text-slate-500 pb-3 border-b border-slate-100 dark:border-slate-800/80">
-          <span>FIG 1.0 — EUCLIDEAN &amp; ANALYTIC SPACE</span>
-          <span className="text-blue-600 dark:text-blue-400 font-bold">Q.E.D. ■</span>
+  return (
+    <Link
+      href={`/courses/${course.slug}`}
+      className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-500 overflow-hidden transition flex flex-col justify-between"
+    >
+      <div>
+        <div className="aspect-video w-full bg-slate-100 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-800 relative overflow-hidden">
+          {coverSrc && !imgError ? (
+            <img
+              src={coverSrc}
+              alt={course.title}
+              onError={() => setImgError(true)}
+              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full bg-linear-to-br from-indigo-500/10 via-blue-500/5 to-slate-100 dark:from-indigo-500/15 dark:via-blue-500/10 dark:to-slate-900 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-2xs">
+                <AcademicCapIcon className="w-6 h-6" />
+              </div>
+            </div>
+          )}
+
+          <div className="absolute top-3 left-3 flex items-center gap-1.5">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-white/95 dark:bg-slate-900/95 text-indigo-700 dark:text-indigo-300 border border-slate-200/80 dark:border-slate-700 backdrop-blur-xs">
+              {course.category || 'Matematika'}
+            </span>
+          </div>
+
+          <div className="absolute top-3 right-3">
+            <span
+              className={`text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-lg border backdrop-blur-xs ${
+                course.is_free
+                  ? 'bg-emerald-500/90 text-white border-emerald-400/50'
+                  : 'bg-slate-900/90 text-amber-300 border-slate-700'
+              }`}
+            >
+              {course.is_free ? 'Gratis' : 'Premium'}
+            </span>
+          </div>
         </div>
 
-        {/* SVG Ilustrasi Geometris & Kurva Fungsi */}
-        <svg
-          viewBox="0 0 460 300"
-          className="w-full h-auto mt-3"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          role="img"
-          aria-label="Ilustrasi Geometris dan Analisis Matematika TheoQED"
-        >
-          <defs>
-            <pattern id="mathGrid" width="24" height="24" patternUnits="userSpaceOnUse">
-              <path
-                d="M 24 0 L 0 0 0 24"
-                stroke="currentColor"
-                className="text-slate-200/70 dark:text-slate-800/80"
-                strokeWidth="1"
-              />
-            </pattern>
-            <linearGradient id="integralFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2563EB" stopOpacity="0.28" />
-              <stop offset="100%" stopColor="#2563EB" stopOpacity="0.02" />
-            </linearGradient>
-            <linearGradient id="curveStroke" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#3B82F6" />
-              <stop offset="100%" stopColor="#6366F1" />
-            </linearGradient>
-          </defs>
-
-          {/* Grid Latar */}
-          <rect x="12" y="12" width="436" height="276" rx="16" fill="url(#mathGrid)" />
-
-          {/* Sumbu Kartesius */}
-          <line x1="44" y1="220" x2="416" y2="220" stroke="currentColor" className="text-slate-300 dark:text-slate-700" strokeWidth="1.5" />
-          <line x1="110" y1="32" x2="110" y2="268" stroke="currentColor" className="text-slate-300 dark:text-slate-700" strokeWidth="1.5" />
-
-          {/* Lingkaran Geometri & Segitiga Dalam (Kiri Atas) */}
-          <circle
-            cx="110"
-            cy="120"
-            r="58"
-            stroke="currentColor"
-            className="text-slate-300 dark:text-slate-700"
-            strokeWidth="1.5"
-            strokeDasharray="4 4"
-          />
-          <polygon
-            points="110,62 60,149 160,149"
-            stroke="#0EA5E9"
-            strokeWidth="1.75"
-            fill="#0EA5E9"
-            fillOpacity="0.06"
-          />
-          <circle cx="110" cy="62" r="4" fill="#0EA5E9" />
-          <circle cx="60" cy="149" r="4" fill="#0EA5E9" />
-          <circle cx="160" cy="149" r="4" fill="#0EA5E9" />
-
-          {/* Area Integral di Bawah Kurva */}
-          <path
-            d="M 150 220 L 150 185 C 195 160, 225 78, 275 88 C 320 97, 345 155, 385 110 L 385 220 Z"
-            fill="url(#integralFill)"
-          />
-
-          {/* Batas Vertikal Integral a dan b */}
-          <line x1="150" y1="185" x2="150" y2="220" stroke="#2563EB" strokeWidth="1.5" strokeDasharray="3 3" />
-          <line x1="385" y1="110" x2="385" y2="220" stroke="#2563EB" strokeWidth="1.5" strokeDasharray="3 3" />
-
-          {/* Kurva Fungsi Utama */}
-          <path
-            d="M 55 245 C 105 225, 125 198, 150 185 C 195 160, 225 78, 275 88 C 320 97, 345 155, 385 110 C 400 93, 412 76, 422 62"
-            stroke="url(#curveStroke)"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-
-          {/* Garis Singgung (Tangent Line) pada Titik Ekstrem Lokal */}
-          <line x1="210" y1="86" x2="335" y2="86" stroke="#10B981" strokeWidth="1.75" strokeDasharray="5 4" />
-          <circle cx="272" cy="86" r="5.5" fill="#10B981" />
-          <circle cx="272" cy="86" r="10" stroke="#10B981" strokeOpacity="0.35" strokeWidth="2" />
-
-          {/* Titik Simpul di Kurva */}
-          <circle cx="150" cy="185" r="4.5" fill="#2563EB" />
-          <circle cx="385" cy="110" r="4.5" fill="#6366F1" />
-
-          {/* Label Notasi Geometris */}
-          <text x="146" y="238" fill="currentColor" className="text-slate-500 dark:text-slate-400 text-[12px] font-mono">
-            a
-          </text>
-          <text x="381" y="238" fill="currentColor" className="text-slate-500 dark:text-slate-400 text-[12px] font-mono">
-            b
-          </text>
-          <text x="242" y="72" fill="#10B981" className="text-[11px] font-mono font-bold">
-            f&apos;(x₀) = 0
-          </text>
-          <text x="235" y="175" fill="#2563EB" className="text-[12px] font-mono font-bold">
-            ∫ f(x) dx
-          </text>
-        </svg>
-
-        {/* Strip Tag Bidang di Bawah Ilustrasi */}
-        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 flex-wrap text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-          <span>Analisis • Aljabar • Kombinatorika • Geometri</span>
-          <span className="font-mono text-slate-400 dark:text-slate-500">∀ε &gt; 0, ∃δ &gt; 0</span>
+        <div className="p-5 space-y-2">
+          <h3 className="text-base font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition line-clamp-2 leading-snug">
+            {course.title}
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+            {course.description ||
+              'Silabus terstruktur mencakup konsep fundamental, contoh pembuktian, dan latihan terarah.'}
+          </p>
         </div>
       </div>
-    </div>
+
+      <div className="px-5 py-3.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+        <span className="text-slate-500 dark:text-slate-400 font-medium truncate">
+          {course.instructor_name || 'TheoQED'}
+        </span>
+        <span className="font-bold text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1 shrink-0">
+          <span>Mulai Belajar</span>
+          <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+        </span>
+      </div>
+    </Link>
   );
 }
 
-const MATH_DOMAINS = [
+const PREMIUM_PLANS = [
   {
-    symbol: '∫',
-    title: 'Analisis Real & Kalkulus',
-    topics: 'Barisan & deret, kekontinuan, diferensial, integral tak wajar, hingga ruang metrik.',
-    accent: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 border-blue-200/70 dark:border-blue-900',
+    name: 'Paket 1 Bulan',
+    badge: 'STANDAR',
+    badgeStyle:
+      'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700',
+    price: 'Rp100.000',
+    perMonth: 'Rp100.000 / bulan',
+    featured: false,
   },
   {
-    symbol: 'det',
-    title: 'Aljabar Linear & Abstrak',
-    topics: 'Matriks, nilai eigen, ruang vektor, polinomial, grup, ring, dan homomorfisma.',
-    accent: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 border-indigo-200/70 dark:border-indigo-900',
+    name: 'Paket 3 Bulan',
+    badge: 'HEMAT 5%',
+    badgeStyle:
+      'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+    price: 'Rp285.000',
+    perMonth: 'Rp95.000 / bulan',
+    featured: false,
   },
   {
-    symbol: '∑',
-    title: 'Kombinatorika & Graf',
-    topics: 'Prinsip pencacahan, inklusi-eksklusi, pigeonhole principle, rekurensi, dan teori graf.',
-    accent: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200/70 dark:border-emerald-900',
+    name: 'Paket 6 Bulan',
+    badge: 'HEMAT 8% • POPULER',
+    badgeStyle: 'bg-indigo-600 text-white border-indigo-600',
+    price: 'Rp550.000',
+    perMonth: 'Rp91.600 / bulan',
+    featured: true,
   },
   {
-    symbol: '≡',
-    title: 'Teori Bilangan',
-    topics: 'Keterbagian, kongruensi modular, teorema Euler-Fermat, fungsi aritmetika, dan persamaan Diophantine.',
-    accent: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/80 border-amber-200/70 dark:border-amber-900',
-  },
-  {
-    symbol: '△',
-    title: 'Geometri & Trigonometri',
-    topics: 'Geometri bidang klasik, kesebangunan, lingkaran, ketaksamaan geometri, dan transformasi.',
-    accent: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/80 border-purple-200/70 dark:border-purple-900',
+    name: 'Paket 1 Tahun',
+    badge: 'HEMAT 17% • PALING HEMAT',
+    badgeStyle:
+      'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+    price: 'Rp1.000.000',
+    perMonth: 'Rp83.300 / bulan',
+    featured: false,
   },
 ];
 
+const PREMIUM_FEATURES = [
+  'Akses seluruh soal & folder Premium',
+  'Semua metode pembahasan & kunci jawaban',
+  'Kontribusi solusi pada soal eksklusif',
+];
+
 export default function HomePage() {
-  const [stats, setStats] = useState({ problems: 0, theorems: 0, notes: 0, tryouts: 0 });
+  const [stats, setStats] = useState({
+    problems: 0,
+    theorems: 0,
+    notes: 0,
+    tryouts: 0,
+    courses: 0,
+  });
   const [recentProblems, setRecentProblems] = useState<Problem[]>([]);
-  const [featuredTheorems, setFeaturedTheorems] = useState<Theorem[]>([]);
-  const [recentNotes, setRecentNotes] = useState<NotePreview[]>([]);
+  const [recentNotes, setRecentNotes] = useState<NoteModuleCardData[]>([]);
+  const [featuredCourses, setFeaturedCourses] = useState<CoursePreview[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     async function loadData() {
       setLoadingData(true);
 
-      const [pCountRes, thCountRes, nCountRes, tCountRes, problemsRes, theoremsRes, notesRes] =
-        await Promise.all([
-          supabase.from('problems').select('id', { count: 'exact', head: true }),
-          supabase.from('theorems').select('id', { count: 'exact', head: true }),
-          supabase.from('notes').select('id', { count: 'exact', head: true }),
-          supabase.from('tryouts').select('id', { count: 'exact', head: true }),
-          supabase
-            .from('problems')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(4),
-          supabase
-            .from('theorems')
-            .select('*')
-            .order('order_index', { ascending: true })
-            .limit(3),
-          supabase
-            .from('notes')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(3),
-        ]);
+      const [
+        pCountRes,
+        thCountRes,
+        nCountRes,
+        tCountRes,
+        cCountRes,
+        problemsRes,
+        notesRes,
+        coursesRes,
+      ] = await Promise.all([
+        supabase.from('problems').select('id', { count: 'exact', head: true }),
+        supabase.from('theorems').select('id', { count: 'exact', head: true }),
+        supabase.from('notes').select('id', { count: 'exact', head: true }),
+        supabase.from('tryouts').select('id', { count: 'exact', head: true }),
+        supabase.from('courses').select('id', { count: 'exact', head: true }),
+        supabase
+          .from('problems')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(3),
+        supabase
+          .from('notes')
+          .select('id, title, slug, description, topic, is_premium, created_at, note_chapters(id, parent_id)')
+          .order('created_at', { ascending: false })
+          .limit(4),
+        supabase
+          .from('courses')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(3),
+      ]);
 
       setStats({
         problems: pCountRes.count || 0,
         theorems: thCountRes.count || 0,
         notes: nCountRes.count || 0,
         tryouts: tCountRes.count || 0,
+        courses: cCountRes.count || 0,
       });
 
-      if (problemsRes.data) {
-        setRecentProblems(problemsRes.data as Problem[]);
-      }
-
-      if (theoremsRes.data) {
-        setFeaturedTheorems(theoremsRes.data as Theorem[]);
-      }
-
-      if (notesRes.data) {
-        setRecentNotes(notesRes.data as NotePreview[]);
-      }
+      if (problemsRes.data) setRecentProblems(problemsRes.data as Problem[]);
+      if (notesRes.data) setRecentNotes(notesRes.data as NoteModuleCardData[]);
+      if (coursesRes.data) setFeaturedCourses(coursesRes.data as CoursePreview[]);
 
       setLoadingData(false);
     }
 
     loadData();
-  }, []);
+  }, [supabase]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans flex flex-col justify-between transition-colors duration-200">
       <div className="flex-1 pb-24">
         <Navbar />
 
-        {/* HERO SECTION */}
-        <section className="relative pt-12 sm:pt-16 pb-16 px-4 sm:px-6 overflow-hidden border-b border-slate-200/70 dark:border-slate-800/70 bg-white/50 dark:bg-slate-900/20">
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl h-72 bg-linear-to-tr from-blue-500/10 via-indigo-500/10 to-purple-500/10 blur-3xl rounded-full pointer-events-none" />
+        {/* 1. FULL-VIEWPORT CENTERED HERO SECTION */}
+        <section className="relative min-h-[calc(100svh-4rem)] flex flex-col justify-center py-16 sm:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden border-b border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-950">
+          <div
+            className="absolute inset-0 bg-[linear-gradient(to_right,#8080800f_1px,transparent_1px),linear-gradient(to_bottom,#8080800f_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"
+            aria-hidden="true"
+          />
+          <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-80 bg-linear-to-b from-indigo-500/10 via-blue-500/5 to-transparent blur-3xl pointer-events-none"
+            aria-hidden="true"
+          />
 
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
-            {/* Hero Left Content */}
-            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-200/80 dark:border-blue-800 shadow-2xs">
-                <SparklesIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span>Developed by @davemarcellino_</span>
-              </div>
+          <div className="max-w-4xl mx-auto w-full text-center space-y-7 relative z-10">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50/90 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200/80 dark:border-indigo-800/80">
+              <SparklesIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Developed by @davemarcellino_</span>
+            </div>
 
-              <h1 className="text-4xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.1]">
-                TheoQED<span className="text-blue-600 dark:text-blue-400">.</span>
-              </h1>
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.06]">
+              <span className="text-indigo-600 dark:text-indigo-400">√ </span>TheoQED<span className="text-indigo-600 dark:text-indigo-400">.</span>
+            </h1>
 
-              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed font-normal max-w-2xl mx-auto lg:mx-0">
-                Platform bank soal olimpiade matematika (ONMIPA/OSN), kumpulan teorema beserta pembuktian, modul catatan kuliah (TheoNotes), serta simulasi ujian Try Out CBT.
-              </p>
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed max-w-2xl mx-auto">
+              Platform bank soal olimpiade matematika (ONMIPA/OSN), kelas terstruktur, kumpulan teorema beserta pembuktian, modul catatan kuliah (TheoNotes), serta simulasi ujian Try Out CBT.
+            </p>
 
-              {/* CTA BUTTONS */}
-              <div className="flex flex-col sm:flex-row items-center sm:items-start justify-center lg:justify-start gap-3 w-full pt-1">
+            {/* Primary CTA (Arsip & Bank Soal dengan ikon) + 3 Tombol Putih Tanpa Ikon (TheoNotes | Courses | Try Out) */}
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-center gap-3 pt-2">
+              <Link
+                href="/arsip"
+                className="h-11 px-6 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-indigo-600/20 transition inline-flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <FolderIcon />
+                <span>Arsip &amp; Bank Soal</span>
+                <ArrowRightIcon />
+              </Link>
+
+              <div className="grid grid-cols-3 sm:flex sm:flex-row items-center gap-2.5 sm:gap-3">
                 <Link
-                  href="/arsip"
-                  className="w-full sm:w-auto px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-2xl shadow-lg shadow-blue-600/20 transition flex items-center justify-center gap-2.5 whitespace-nowrap shrink-0"
+                  href="/notes"
+                  className="h-11 px-4 sm:px-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 text-slate-800 dark:text-slate-100 font-bold text-xs sm:text-sm rounded-xl transition inline-flex items-center justify-center whitespace-nowrap"
                 >
-                  <FolderIcon className="w-4 h-4" />
-                  <span>Arsip &amp; Bank Soal</span>
-                  <ArrowRightIcon className="w-4 h-4" />
+                  TheoNotes
                 </Link>
 
-                <div className="grid grid-cols-2 sm:flex sm:flex-row items-center gap-3 w-full sm:w-auto">
-                  <Link
-                    href="/teorema"
-                    className="w-full sm:w-auto px-5 py-3.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-600 text-slate-800 dark:text-slate-100 font-bold text-sm rounded-2xl shadow-2xs transition flex items-center justify-center gap-2 whitespace-nowrap shrink-0"
-                  >
-                    <TheoremIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    <span>Teorema</span>
-                  </Link>
+                <Link
+                  href="/courses"
+                  className="h-11 px-4 sm:px-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 text-slate-800 dark:text-slate-100 font-bold text-xs sm:text-sm rounded-xl transition inline-flex items-center justify-center whitespace-nowrap"
+                >
+                  Courses
+                </Link>
 
-                  <Link
-                    href="/tryout"
-                    className="w-full sm:w-auto px-5 py-3.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-600 text-slate-800 dark:text-slate-100 font-bold text-sm rounded-2xl shadow-2xs transition flex items-center justify-center gap-2 whitespace-nowrap shrink-0"
-                  >
-                    <ClipboardCheckIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    <span>Try Out</span>
-                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-300/70 dark:border-amber-800/70 leading-none">
-                      BETA
-                    </span>
-                  </Link>
-                </div>
-              </div>
-
-              {/* Quick Live Stats */}
-              <div className="pt-6 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs font-semibold text-slate-500 dark:text-slate-400 border-t border-slate-200/70 dark:border-slate-800/80">
-                <div>
-                  <strong className="text-slate-900 dark:text-white text-base font-black block">
-                    {stats.problems || '50+'}
-                  </strong>
-                  <span>Soal &amp; Pembahasan</span>
-                </div>
-                <div className="w-px h-8 bg-slate-200 dark:bg-slate-800" />
-                <div>
-                  <strong className="text-slate-900 dark:text-white text-base font-black block">
-                    {stats.theorems || '15+'}
-                  </strong>
-                  <span>Teorema Terkurasi</span>
-                </div>
-                <div className="w-px h-8 bg-slate-200 dark:bg-slate-800" />
-                <div>
-                  <strong className="text-slate-900 dark:text-white text-base font-black block">
-                    {stats.notes || '5+'}
-                  </strong>
-                  <span>Modul TheoNotes</span>
-                </div>
-                <div className="w-px h-8 bg-slate-200 dark:bg-slate-800" />
-                <div>
-                  <strong className="text-slate-900 dark:text-white text-base font-black block">
-                    {stats.tryouts || '5+'}
-                  </strong>
-                  <span>Paket Try Out</span>
-                </div>
+                <Link
+                  href="/tryout"
+                  className="h-11 px-4 sm:px-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 text-slate-800 dark:text-slate-100 font-bold text-xs sm:text-sm rounded-xl transition inline-flex items-center justify-center whitespace-nowrap"
+                >
+                  Try Out
+                </Link>
               </div>
             </div>
 
-            {/* Hero Right: Custom Geometric & Mathematical Illustration */}
-            <div className="lg:col-span-5">
-              <HeroMathIllustration />
+            {/* Live Stats Bar */}
+            <div className="pt-10 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-2xl mx-auto border-t border-slate-200/80 dark:border-slate-800/80">
+              <div>
+                <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tabular-nums">
+                  {stats.problems || '50+'}
+                </div>
+                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  Soal &amp; Solusi
+                </div>
+              </div>
+              <div>
+                <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tabular-nums">
+                  {stats.theorems || '15+'}
+                </div>
+                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  Teorema Terkurasi
+                </div>
+              </div>
+              <div>
+                <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tabular-nums">
+                  {stats.notes || '5+'}
+                </div>
+                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  Modul TheoNotes
+                </div>
+              </div>
+              <div>
+                <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tabular-nums">
+                  {stats.courses + stats.tryouts || '10+'}
+                </div>
+                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  Courses &amp; Paket CBT
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* SECTION 1: EMPAT PILAR PERSIAPAN MATEMATIKA */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-14 space-y-6">
-          <div className="space-y-1.5 max-w-2xl">
-            <span className="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider block">
+        {/* 2. EKOSISTEM BELAJAR THEOQED */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 space-y-6">
+          <div className="space-y-1 max-w-2xl">
+            <span className="text-[11px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
               Ekosistem Belajar
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-              Empat Pilar Persiapan Matematika
+              Fitur Utama TheoQED
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed pt-0.5">
-              Dirancang terintegrasi mulai dari pemahaman teori, referensi teorema, latihan soal terstruktur, hingga simulasi ujian.
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {/* Card 1: Arsip Bank Soal */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+            {/* Utama: Arsip Bank Soal */}
             <Link
               href="/arsip"
-              className="group bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 shadow-2xs hover:shadow-md transition flex flex-col justify-between space-y-6"
+              className="md:col-span-7 group bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/90 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-500 transition flex flex-col justify-between gap-6"
             >
-              <div className="space-y-4">
-                <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 w-fit">
-                  <FolderIcon className="w-5 h-5" />
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/90 text-indigo-600 dark:text-indigo-400 border border-indigo-200/70 dark:border-indigo-900">
+                    <FolderIcon className="w-5 h-5" />
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20">
+                    Koleksi Utama
+                  </span>
                 </div>
+
                 <div className="space-y-1.5">
-                  <h3 className="text-base font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                    Arsip Bank Soal
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                    Arsip &amp; Bank Soal
                   </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Penjelajah folder soal ONMIPA, OSN, dan ujian mata kuliah lengkap dengan filter topik dan pencarian cepat.
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Penjelajah folder soal ONMIPA, OSN, dan ujian perguruan tinggi lengkap dengan filter topik, pencarian cepat, petunjuk penyelesaian, serta solusi terstruktur.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400">
-                <span>Buka Bank Soal</span>
-                <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+              <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                <span>Buka Arsip Soal</span>
+                <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
               </div>
             </Link>
 
-            {/* Card 2: Kumpulan Teorema */}
+            {/* Courses */}
             <Link
-              href="/teorema"
-              className="group bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 shadow-2xs hover:shadow-md transition flex flex-col justify-between space-y-6"
+              href="/courses"
+              className="md:col-span-5 group bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/90 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 transition flex flex-col justify-between gap-6"
             >
-              <div className="space-y-4">
-                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 w-fit">
-                  <TheoremIcon className="w-5 h-5" />
+              <div className="space-y-3.5">
+                <div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/90 text-blue-600 dark:text-blue-400 border border-blue-200/70 dark:border-blue-900 w-fit">
+                  <AcademicCapIcon className="w-5 h-5" />
                 </div>
+
                 <div className="space-y-1.5">
-                  <h3 className="text-base font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                    Kumpulan Teorema
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                    Courses &amp; Silabus
                   </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Referensi cepat teorema, lemma, dan prinsip fundamental beserta intuisi pemakaian dan pembuktian formal.
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Belajar bertahap per bab melalui materi bacaan LaTeX, video pembahasan, latihan interaktif, dan pelacakan progres otomatis.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                <span>Lihat Teorema</span>
-                <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+              <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                <span>Lihat Daftar Courses</span>
+                <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
               </div>
             </Link>
 
-            {/* Card 3: TheoNotes */}
+            {/* TheoNotes */}
             <Link
               href="/notes"
-              className="group bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 shadow-2xs hover:shadow-md transition flex flex-col justify-between space-y-6"
+              className="md:col-span-4 group bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/90 dark:border-slate-800 hover:border-purple-500 dark:hover:border-purple-500 transition flex flex-col justify-between gap-5"
             >
-              <div className="space-y-4">
-                <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/80 text-purple-600 dark:text-purple-400 w-fit">
+              <div className="space-y-3">
+                <div className="p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/90 text-purple-600 dark:text-purple-400 border border-purple-200/70 dark:border-purple-900 w-fit">
                   <BookOpenIcon className="w-5 h-5" />
                 </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-base font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                <div className="space-y-1">
+                  <h3 className="text-base font-black text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition">
                     TheoNotes Library
                   </h3>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Catatan ringkas dan rangkuman materi perkuliahan matematika dengan navigasi daftar isi yang terstruktur.
+                    Catatan kuliah ringkas dan modul rangkuman konsep matematika dengan navigasi yang terstruktur.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition">
                 <span>Baca Catatan</span>
-                <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
               </div>
             </Link>
 
-            {/* Card 4: Simulasi Try Out CBT */}
+            {/* Kumpulan Teorema */}
+            <Link
+              href="/teorema"
+              className="md:col-span-4 group bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 transition flex flex-col justify-between gap-5"
+            >
+              <div className="space-y-3">
+                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/90 text-emerald-600 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-900 w-fit">
+                  <TheoremIcon className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-black text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                    Kumpulan Teorema
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Direktori teorema, lemma, dan prinsip penting lengkap dengan intuisi penggunaan serta pembuktian formal.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                <span>Lihat Teorema</span>
+                <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+              </div>
+            </Link>
+
+            {/* Simulasi Try Out CBT */}
             <Link
               href="/tryout"
-              className="group bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 shadow-2xs hover:shadow-md transition flex flex-col justify-between space-y-6"
+              className="md:col-span-4 group bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/90 dark:border-slate-800 hover:border-amber-500 dark:hover:border-amber-500 transition flex flex-col justify-between gap-5"
             >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 w-fit">
-                    <ClipboardCheckIcon className="w-5 h-5" />
-                  </div>
-                  <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-amber-100/90 dark:bg-amber-950/90 text-amber-700 dark:text-amber-300 border border-amber-300/70 dark:border-amber-800/70">
-                    BETA
-                  </span>
+              <div className="space-y-3">
+                <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/90 text-amber-600 dark:text-amber-400 border border-amber-200/70 dark:border-amber-900 w-fit">
+                  <ClipboardCheckIcon className="w-5 h-5" />
                 </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-base font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                <div className="space-y-1">
+                  <h3 className="text-base font-black text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
                     Simulasi Try Out CBT
                   </h3>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    Latihan ujian berwaktu menggunakan soal-soal dari arsip dengan evaluasi skor dan pembahasan langsung.
+                    Latihan ujian berbatas waktu dengan penilaian otomatis dan tinjauan pembahasan pasca-simulasi.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
                 <span>Mulai Simulasi</span>
-                <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
               </div>
             </Link>
           </div>
         </section>
 
-        {/* SECTION 2: CAKUPAN BIDANG MATEMATIKA */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-16 space-y-6">
-          <div className="space-y-1.5 max-w-2xl">
-            <span className="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider block">
-              Klasifikasi Materi
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-              Cakupan Bidang Matematika
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed pt-0.5">
-              Seluruh soal, teorema, dan catatan disusun berdasarkan cabang utama matematika olimpiade maupun perguruan tinggi.
-            </p>
-          </div>
+        {/* 3. COURSES TERBARU (MAKSIMAL 3 KELAS) */}
+        {(loadingData || featuredCourses.length > 0) && (
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 space-y-6">
+            <div className="flex items-end justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-[11px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
+                  Kurikulum Terstruktur
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                  Courses Terbaru
+                </h2>
+              </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {MATH_DOMAINS.map((domain) => (
               <Link
-                key={domain.title}
-                href="/arsip"
-                className="group bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-600 shadow-2xs hover:shadow-md transition flex flex-col justify-between gap-4"
+                href="/courses"
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1.5 shrink-0"
               >
-                <div className="space-y-3">
-                  <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-serif font-bold text-base ${domain.accent}`}>
-                    {domain.symbol}
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                      {domain.title}
-                    </h3>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                      {domain.topics}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                  <span>Telusuri Arsip</span>
-                  <ArrowRightIcon className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
-                </div>
+                <span>Semua Courses</span>
+                <ArrowRightIcon className="w-3.5 h-3.5" />
               </Link>
-            ))}
-          </div>
-        </section>
+            </div>
 
-        {/* SECTION 3: SOAL TERBARU (4 BARIS HORIZONTAL) */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-16 space-y-6">
+            {loadingData ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-72 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {featuredCourses.slice(0, 3).map((course) => (
+                  <CourseCard key={course.id} course={course} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* 4. SOAL TERBARU (3 BARIS HORIZONTAL, TAMPIL FULL TANPA TERPOTONG) */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 space-y-6">
           <div className="flex items-end justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse" />
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse" />
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                   Soal Terbaru
                 </h2>
               </div>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Daftar soal dan pembahasan yang baru saja diunggah ke basis data TheoQED.
+                Soal dan pembahasan yang baru saja ditambahkan ke arsip TheoQED.
               </p>
             </div>
 
             <Link
               href="/arsip"
-              className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 shrink-0"
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1.5 shrink-0"
             >
               <span>Lihat Semua</span>
               <ArrowRightIcon className="w-3.5 h-3.5" />
@@ -574,23 +623,23 @@ export default function HomePage() {
 
           {loadingData ? (
             <div className="space-y-3.5">
-              {[1, 2, 3, 4].map((i) => (
+              {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="h-24 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 animate-pulse"
+                  className="h-28 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 animate-pulse"
                 />
               ))}
             </div>
           ) : recentProblems.length > 0 ? (
             <div className="space-y-3.5">
-              {recentProblems.map((prob) => (
+              {recentProblems.slice(0, 3).map((prob) => (
                 <div
                   key={prob.id}
-                  className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs hover:border-blue-500/50 dark:hover:border-blue-500/50 hover:shadow-md transition duration-200 group flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-indigo-500/60 dark:hover:border-indigo-500/60 transition duration-200 group flex flex-col sm:flex-row sm:items-center justify-between gap-5"
                 >
-                  <div className="space-y-2.5 flex-1 min-w-0">
+                  <div className="space-y-3 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950 px-2.5 py-1 rounded-lg border border-blue-200/70 dark:border-blue-900">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950 px-2.5 py-1 rounded-lg border border-indigo-200/70 dark:border-indigo-900">
                         {prob.competition} {prob.year}
                       </span>
                       <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
@@ -601,7 +650,7 @@ export default function HomePage() {
                       </span>
                     </div>
 
-                    <div className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 font-normal line-clamp-2 leading-relaxed">
+                    <div className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 font-normal leading-relaxed">
                       <MathText text={prob.statement} />
                     </div>
                   </div>
@@ -609,7 +658,7 @@ export default function HomePage() {
                   <div className="shrink-0 pt-2 sm:pt-0 sm:border-l sm:border-slate-100 sm:dark:border-slate-800/80 sm:pl-5">
                     <Link
                       href={`/problems/${prob.prob_slug || prob.id}`}
-                      className="px-4 py-2.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-600 dark:hover:bg-blue-600 text-blue-700 dark:text-blue-300 hover:text-white dark:hover:text-white font-bold text-xs rounded-xl transition inline-flex items-center gap-2 border border-blue-100 dark:border-blue-900/60 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 shadow-2xs"
+                      className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 dark:hover:bg-indigo-600 text-indigo-700 dark:text-indigo-300 hover:text-white dark:hover:text-white font-bold text-xs rounded-xl transition inline-flex items-center gap-2 border border-indigo-100 dark:border-indigo-900/60 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 whitespace-nowrap"
                     >
                       <span>Buka Solusi</span>
                       <ArrowRightIcon className="w-3.5 h-3.5" />
@@ -625,197 +674,118 @@ export default function HomePage() {
           )}
         </section>
 
-        {/* SECTION 4: REFERENSI TEOREMA & MODUL THEONOTES (DINAMIS DARI DATABASE) */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-16 grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Kolom Kiri: Sorotan Teorema */}
-          <div className="space-y-4">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
-                  Perpustakaan Teorema
-                </span>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                  Teorema &amp; Prinsip Penting
-                </h2>
-              </div>
-              <Link
-                href="/teorema"
-                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 shrink-0"
-              >
-                <span>Semua Teorema</span>
-                <ArrowRightIcon className="w-3.5 h-3.5" />
-              </Link>
+        {/* 5. MODUL THEONOTES TERBARU (DERET KARTU IDENTIK DENGAN /notes) */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 space-y-6">
+          <div className="flex items-end justify-between gap-4">
+            <div className="space-y-1">
+              <span className="text-[11px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
+                Catatan Kuliah &amp; Ringkasan
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                Modul TheoNotes Terbaru
+              </h2>
             </div>
 
-            {loadingData ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-24 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 animate-pulse" />
-                ))}
-              </div>
-            ) : featuredTheorems.length > 0 ? (
-              <div className="space-y-3">
-                {featuredTheorems.map((th) => (
-                  <Link
-                    key={th.id}
-                    href={`/teorema/${th.slug}`}
-                    className="group block bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 shadow-2xs transition space-y-2"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 px-2.5 py-0.5 rounded-md border border-emerald-200/70 dark:border-emerald-900">
-                        {th.field}
-                      </span>
-                      {th.mathematicians && (
-                        <span className="text-[11px] font-medium text-slate-400 truncate">
-                          {th.mathematicians}
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
-                      {th.title}
-                    </h3>
-                    <div className="text-xs text-slate-600 dark:text-slate-400 line-clamp-1">
-                      <MathText text={th.statement} />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-center text-xs text-slate-400">
-                Belum ada teorema yang dipublikasikan.
-              </div>
-            )}
+            <Link
+              href="/notes"
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1.5 shrink-0"
+            >
+              <span>Semua Catatan</span>
+              <ArrowRightIcon className="w-3.5 h-3.5" />
+            </Link>
           </div>
 
-          {/* Kolom Kanan: Modul TheoNotes */}
-          <div className="space-y-4">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <span className="text-[11px] font-extrabold text-purple-600 dark:text-purple-400 uppercase tracking-wider block">
-                  Catatan Kuliah &amp; Ringkasan
-                </span>
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                  Modul TheoNotes Terbaru
-                </h2>
-              </div>
-              <Link
-                href="/notes"
-                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 shrink-0"
-              >
-                <span>Semua Catatan</span>
-                <ArrowRightIcon className="w-3.5 h-3.5" />
-              </Link>
+          {loadingData ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="h-96 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 animate-pulse"
+                />
+              ))}
             </div>
-
-            {loadingData ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-24 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 animate-pulse" />
-                ))}
-              </div>
-            ) : recentNotes.length > 0 ? (
-              <div className="space-y-3">
-                {recentNotes.map((note) => (
-                  <Link
-                    key={note.id}
-                    href={`/notes/${note.slug || note.id}`}
-                    className="group block bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-purple-500 dark:hover:border-purple-500 shadow-2xs transition space-y-2"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/80 px-2.5 py-0.5 rounded-md border border-purple-200/70 dark:border-purple-900">
-                        {note.subject || note.category || 'TheoNotes'}
-                      </span>
-                      <span className="text-[11px] font-semibold text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition">
-                        Baca Modul →
-                      </span>
-                    </div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition">
-                      {note.title || `Catatan #${note.id}`}
-                    </h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-1">
-                      {note.description || note.summary || 'Rangkuman konsep, definisi formal, dan contoh penerapan terstruktur.'}
-                    </p>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-center text-xs text-slate-400">
-                Belum ada catatan kuliah di TheoNotes.
-              </div>
-            )}
-          </div>
+          ) : recentNotes.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {recentNotes.map((note) => (
+                <NoteModuleCard key={note.id} module={note} />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-center text-xs text-slate-400">
+              Belum ada catatan kuliah di TheoNotes.
+            </div>
+          )}
         </section>
 
-        {/* SECTION 5: ALUR BELAJAR & CTA PENUTUP */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-16">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-10 shadow-2xs space-y-8">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-100 dark:border-slate-800 pb-8">
-              <div className="space-y-1.5 max-w-2xl">
-                <span className="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider block">
-                  Alur Belajar Terstruktur
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                  Siap Mengasah Intuisi &amp; Pembuktian Matematis?
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Gunakan kombinasi referensi teorema, arsip soal kompetisi, dan simulasi berwaktu untuk mempersiapkan diri menghadapi ONMIPA-PT, OSN, maupun ujian akhir semester.
-                </p>
-              </div>
+        {/* 6. PAKET AKSES PREMIUM */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20 space-y-8">
+          <div className="text-center max-w-2xl mx-auto space-y-2.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+              <CrownIcon />
+              <span>THEOQED PREMIUM</span>
+            </span>
 
-              <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              Pilih Paket Akses Premium
+            </h2>
+
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+              Buka seluruh arsip folder eksklusif, petunjuk penyelesaian, kunci jawaban resmi, serta beragam metode pembahasan lengkap.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {PREMIUM_PLANS.map((plan) => (
+              <div
+                key={plan.name}
+                className={`bg-white dark:bg-slate-900 rounded-2xl p-6 flex flex-col justify-between gap-6 border transition ${
+                  plan.featured
+                    ? 'border-indigo-500 ring-1 ring-indigo-500/20 shadow-lg shadow-indigo-500/5'
+                    : 'border-slate-200/90 dark:border-slate-800'
+                }`}
+              >
+                <div className="space-y-4">
+                  <span
+                    className={`inline-block px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider border ${plan.badgeStyle}`}
+                  >
+                    {plan.badge}
+                  </span>
+
+                  <div className="space-y-1">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      {plan.name}
+                    </h3>
+                    <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                      {plan.price}
+                    </div>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{plan.perMonth}</p>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
+                    {PREMIUM_FEATURES.map((feat) => (
+                      <div
+                        key={feat}
+                        className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed"
+                      >
+                        <CheckIcon className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <span>{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <Link
-                  href="/arsip"
-                  className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-sm transition inline-flex items-center gap-2"
+                  href="/upgrade"
+                  className={`w-full h-10 px-4 rounded-xl text-xs font-bold transition inline-flex items-center justify-center ${
+                    plan.featured
+                      ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                      : 'bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white'
+                  }`}
                 >
-                  <span>Mulai dari Arsip Soal</span>
-                  <ArrowRightIcon className="w-3.5 h-3.5" />
-                </Link>
-                <Link
-                  href="/bookmarks"
-                  className="px-5 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl transition"
-                >
-                  Lihat Soal Tersimpan
+                  Pilih Paket Ini
                 </Link>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <span className="text-xs font-mono font-black text-blue-600 dark:text-blue-400">
-                  01 / KONSEP &amp; TEOREMA
-                </span>
-                <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                  Pahami Fondasi &amp; Lemma
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Pelajari definisi formal dan ide pembuktian melalui modul TheoNotes serta direktori Teorema sebelum berhadapan dengan soal non-rutin.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <span className="text-xs font-mono font-black text-blue-600 dark:text-blue-400">
-                  02 / EKSPLORASI ARSIP
-                </span>
-                <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                  Bedah Soal Kompetisi &amp; Kuliah
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Filter soal berdasarkan ajang atau topik, coba kerjakan secara mandiri, lalu bandingkan langkah pembuktianmu dengan solusi lengkap.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <span className="text-xs font-mono font-black text-blue-600 dark:text-blue-400">
-                  03 / EVALUASI CBT
-                </span>
-                <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                  Uji Ketahanan &amp; Manajemen Waktu
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Ikuti paket simulasi Try Out berwaktu untuk mengukur ketepatan pengerjaan sekaligus meninjau ulang soal-soal yang perlu diperdalam.
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         </section>
       </div>

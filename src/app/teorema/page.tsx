@@ -4,19 +4,10 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
 import { MathText } from '@/components/MathText';
 import { Theorem } from '@/types/theorem';
 
 // --- SVG ICONS ---
-function ArrowLeftIcon({ className = 'w-4 h-4' }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-    </svg>
-  );
-}
-
 function ArrowRightIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -50,12 +41,12 @@ function XIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
 }
 
 export default function TeoremaLibraryPage() {
+  const supabase = useMemo(() => createClient(), []);
+
   const [theorems, setTheorems] = useState<Theorem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedField, setSelectedField] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
-
-  const supabase = createClient();
 
   useEffect(() => {
     async function fetchTheorems() {
@@ -72,7 +63,7 @@ export default function TeoremaLibraryPage() {
     }
 
     fetchTheorems();
-  }, []);
+  }, [supabase]);
 
   const fields = useMemo(() => {
     return Array.from(new Set(theorems.map((t) => t.field)));
@@ -105,183 +96,159 @@ export default function TeoremaLibraryPage() {
   }, [filteredTheorems]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans pb-12 transition-colors duration-200">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-20 space-y-10">
-        {/* Back Link */}
-        <div>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition"
-          >
-            <ArrowLeftIcon className="w-3.5 h-3.5" />
-            <span>Kembali ke Beranda</span>
-          </Link>
-        </div>
-
-        {/* Hero Header */}
-        <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6 border-b border-slate-200/80 dark:border-slate-800/80">
-          <div className="space-y-3 max-w-3xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 text-[10px] font-extrabold uppercase tracking-wider border border-blue-200/80 dark:border-blue-900/80">
-              <BookOpenIcon className="w-3.5 h-3.5" />
-              <span>Perpustakaan Teorema</span>
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-              Kumpulan Teorema
+      {/* Control Panel Perpustakaan Teorema */}
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 py-5 transition-colors duration-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+              Perpustakaan Teorema
             </h1>
 
-            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-              Teorema, lemma, dan prinsip fundamental yang sering digunakan dalam soal ONMIPA-PT dan kompetisi matematika, lengkap dengan syarat, intuisi, serta pembuktian formal.
-            </p>
-          </div>
+            {/* Statistik & Input Pencarian */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {!loading && (
+                <div className="flex items-center gap-2">
+                  <div className="h-9 px-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 text-xs inline-flex items-center gap-1.5">
+                    <span className="font-bold text-slate-900 dark:text-white">{theorems.length}</span>
+                    <span className="text-slate-500 dark:text-slate-400">Teorema</span>
+                  </div>
+                  <div className="h-9 px-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 text-xs inline-flex items-center gap-1.5">
+                    <span className="font-bold text-slate-900 dark:text-white">{fields.length}</span>
+                    <span className="text-slate-500 dark:text-slate-400">Bidang</span>
+                  </div>
+                </div>
+              )}
 
-          {!loading && (
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-xs">
-                <span className="font-black text-slate-900 dark:text-white">{theorems.length}</span>{' '}
-                <span className="text-slate-500 dark:text-slate-400 font-semibold">Teorema</span>
-              </div>
-              <div className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-xs">
-                <span className="font-black text-slate-900 dark:text-white">{fields.length}</span>{' '}
-                <span className="text-slate-500 dark:text-slate-400 font-semibold">Bidang</span>
+              <div className="relative w-full sm:w-72 md:w-80">
+                <SearchIcon className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari teorema, topik, atau tokoh..."
+                  className="w-full h-9 pl-9 pr-9 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    aria-label="Hapus pencarian"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                  >
+                    <XIcon />
+                  </button>
+                )}
               </div>
             </div>
-          )}
-        </header>
+          </div>
 
-        {/* Filter Bar & Search */}
-        <section className="space-y-4">
-          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-            {/* Field Filter Pills */}
-            <div className="flex flex-wrap items-center gap-2">
+          {/* Filter Bidang */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pt-3.5 border-t border-slate-100 dark:border-slate-800 text-xs pb-1 sm:pb-0">
+            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1 shrink-0">
+              Bidang:
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedField('ALL')}
+              className={`h-8 px-3 rounded-xl text-xs font-semibold transition whitespace-nowrap cursor-pointer ${
+                selectedField === 'ALL'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              Semua Bidang
+            </button>
+            {fields.map((field) => (
               <button
+                key={field}
                 type="button"
-                onClick={() => setSelectedField('ALL')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                  selectedField === 'ALL'
-                    ? 'bg-blue-600 text-white shadow-2xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200/90 dark:border-slate-800 hover:border-blue-400'
+                onClick={() => setSelectedField(field)}
+                className={`h-8 px-3 rounded-xl text-xs font-semibold transition whitespace-nowrap cursor-pointer ${
+                  selectedField === field
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
-                Semua Bidang
+                {field}
               </button>
-              {fields.map((field) => (
-                <button
-                  key={field}
-                  type="button"
-                  onClick={() => setSelectedField(field)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                    selectedField === field
-                      ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200/90 dark:border-slate-800 hover:border-blue-400'
-                  }`}
-                >
-                  {field}
-                </button>
-              ))}
-            </div>
-
-            {/* Search Input */}
-            <div className="relative w-full md:w-80 shrink-0">
-              <SearchIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari teorema atau tokoh..."
-                className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 transition shadow-2xs"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  aria-label="Hapus pencarian"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
-                >
-                  <XIcon />
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* Daftar Teorema Dikelompokkan per Bidang (Grid 2 Kolom di Desktop) */}
-        {loading ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map((n) => (
-              <div
-                key={n}
-                className="h-44 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 animate-pulse"
-              />
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Daftar Teorema Dikelompokkan per Bidang */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+        {loading ? (
+          <div className="py-24 text-center text-xs font-semibold text-slate-400 flex flex-col items-center justify-center gap-3">
+            <div className="w-7 h-7 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+            <span>Memuat perpustakaan teorema...</span>
+          </div>
         ) : Object.keys(groupedByField).length === 0 ? (
-          <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-2">
-            <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+          <div className="bg-white dark:bg-slate-900 p-10 sm:p-12 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-center space-y-2.5 max-w-md mx-auto mt-6">
+            <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto border border-slate-200/80 dark:border-slate-700">
               <BookOpenIcon className="w-5 h-5" />
             </div>
-            <p className="text-sm font-black text-slate-800 dark:text-slate-200">
+            <p className="text-sm font-bold text-slate-900 dark:text-white">
               Tidak ada teorema yang cocok
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Coba ubah kata kunci pencarian atau pilih opsi &ldquo;Semua Bidang&rdquo;.
             </p>
           </div>
         ) : (
-          <div className="space-y-12">
+          <div className="space-y-10">
             {Object.entries(groupedByField).map(([fieldName, items]) => (
               <section key={fieldName} className="space-y-4">
                 {/* Judul Bidang + Jumlah */}
                 <div className="flex items-center gap-2.5">
-                  <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
                     {fieldName}
                   </h2>
-                  <span className="px-2.5 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400">
+                  <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-900 text-xs font-bold">
                     {items.length}
                   </span>
                 </div>
 
                 {/* Grid Kartu Teorema */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                   {items.map((theorem) => (
                     <Link
                       key={theorem.id}
                       href={`/teorema/${theorem.slug}`}
-                      className="group flex flex-col justify-between p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-600 shadow-2xs hover:shadow-md transition-all duration-200"
+                      className="group flex flex-col justify-between p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-800 hover:-translate-y-0.5 transition-all duration-200"
                     >
-                      <div className="space-y-3">
-                        {/* Baris Judul, Tag Topik & Tokoh */}
-                        <div className="space-y-1.5">
+                      <div className="space-y-3.5">
+                        {/* Baris Tag Topik, Tokoh & Judul */}
+                        <div className="space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400">
+                            <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-900">
                               {theorem.topic}
                             </span>
                             {theorem.mathematicians && (
-                              <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                                 {theorem.mathematicians}
                               </span>
                             )}
                           </div>
 
-                          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                          <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
                             {theorem.title}
                           </h3>
                         </div>
 
                         {/* Pernyataan Teorema (KaTeX) */}
-                        <div className="text-sm text-slate-700 dark:text-slate-300">
+                        <div className="p-4 rounded-xl bg-slate-50/80 dark:bg-slate-950/50 border border-slate-200/70 dark:border-slate-800 text-sm text-slate-800 dark:text-slate-200">
                           <MathText text={theorem.statement} />
                         </div>
                       </div>
 
                       {/* Link Footer */}
-                      <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/80">
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                          <span>Baca intuisi &amp; pembuktian</span>
-                          <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-                        </span>
+                      <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-500 transition">
+                        <span>Baca intuisi &amp; pembuktian</span>
+                        <ArrowRightIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                       </div>
                     </Link>
                   ))}
@@ -291,8 +258,6 @@ export default function TeoremaLibraryPage() {
           </div>
         )}
       </main>
-
-      <Footer />
     </div>
   );
 }
