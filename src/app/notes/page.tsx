@@ -82,7 +82,6 @@ export default function NotesCatalogPage() {
               TheoNotes Library
             </h1>
 
-            {/* Input Pencarian Modul */}
             <div className="relative w-full sm:w-72 md:w-80">
               <SearchIcon className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -95,7 +94,6 @@ export default function NotesCatalogPage() {
             </div>
           </div>
 
-          {/* Filter Akses & Topik Modul */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-3.5 border-t border-slate-100 dark:border-slate-800">
             {availableTopics.length > 2 ? (
               <div className="flex items-center gap-1.5 overflow-x-auto text-xs pb-1 sm:pb-0">
@@ -121,7 +119,6 @@ export default function NotesCatalogPage() {
               <div />
             )}
 
-            {/* Filter Akses Gratis vs Premium */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs font-semibold">
               {[
                 { id: 'all', label: 'Semua' },
@@ -146,7 +143,7 @@ export default function NotesCatalogPage() {
         </div>
       </div>
 
-      {/* GRID KATALOG MODUL */}
+      {/* GRID KATALOG MODUL (2 Kolom Mobile, 5 Kolom PC) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         {loading ? (
           <div className="py-24 text-center text-xs font-semibold text-slate-400 flex flex-col items-center justify-center gap-3">
@@ -154,7 +151,7 @@ export default function NotesCatalogPage() {
             <span>Memuat modul TheoNotes...</span>
           </div>
         ) : filteredModules.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 sm:gap-5">
             {filteredModules.map((module) => (
               <NoteModuleCard key={module.id} module={module} />
             ))}

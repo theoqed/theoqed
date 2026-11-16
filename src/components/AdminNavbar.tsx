@@ -79,6 +79,14 @@ function LibraryIcon({ className = 'w-4 h-4' }: { className?: string }) {
   );
 }
 
+function PerpustakaanIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 5a1 1 0 011-1h2a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm5 0a1 1 0 011-1h2a1 1 0 011 1v14a1 1 0 01-1 1h-2a1 1 0 01-1-1V5zm5.2.3l1.9-.5a1 1 0 011.2.7l3.1 11.6a1 1 0 01-.7 1.2l-1.9.5a1 1 0 01-1.2-.7L13.5 6.5a1 1 0 01.7-1.2z" />
+    </svg>
+  );
+}
+
 function ClipboardCheckIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,6 +148,7 @@ const PRIMARY_LINKS: NavItem[] = [
   { name: 'Courses', href: '/admin/courses', icon: <AcademicCapIcon /> },
   { name: 'TheoNotes', href: '/admin/notes', icon: <BookOpenIcon /> },
   { name: 'Teorema', href: '/admin/teorema', icon: <LibraryIcon /> },
+  { name: 'Perpustakaan', href: '/admin/perpustakaan', icon: <PerpustakaanIcon /> },
   { name: 'Try Out', href: '/admin/tryout', icon: <ClipboardCheckIcon /> },
   { name: 'Members', href: '/admin/members', icon: <UsersIcon /> },
 ];
@@ -160,6 +169,12 @@ const SUBMISSION_LINKS: NavItem[] = [
 ];
 
 const STUDIO_LINKS: NavItem[] = [
+  {
+    name: 'TheoQED Lingo CMS',
+    href: '/admin/languages',
+    description: 'Kelola modul, materi & kosakata 11+ bahasa',
+    icon: <GlobeIcon />,
+  },
   {
     name: 'Worksheet Generator',
     href: '/admin/worksheet',

@@ -1,15 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { AppSwitcher } from '@/components/AppSwitcher';
 import { getMembershipState, MembershipState } from '@/lib/premium';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
-// Daftar 6 halaman utama yang menggunakan Navbar ini
-const MAIN_NAV_ROUTES = ['/', '/arsip', '/notes', '/teorema', '/courses', '/tryout'];
+// Daftar halaman utama yang menampilkan Navbar utama
+const MAIN_NAV_ROUTES = [
+  '/',
+  '/arsip',
+  '/notes',
+  '/perpustakaan',
+  '/teorema',
+  '/courses',
+  '/tryout',
+];
 
 // --- SVG ICONS ---
 function MenuIcon({ className = 'w-5 h-5' }: { className?: string }) {
@@ -24,6 +33,14 @@ function CloseIcon({ className = 'w-5 h-5' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon({ className = 'w-3.5 h-3.5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
     </svg>
   );
 }
@@ -52,10 +69,26 @@ function ArchiveIcon({ className = 'w-4 h-4' }: { className?: string }) {
   );
 }
 
-function NotesIcon({ className = 'w-4 h-4' }: { className?: string }) {
+function ReferenceIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+    </svg>
+  );
+}
+
+function NotesIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+  );
+}
+
+function LibraryIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
     </svg>
   );
 }
@@ -108,6 +141,34 @@ function SparklesIcon({ className = 'w-4 h-4' }: { className?: string }) {
   );
 }
 
+const PRIMARY_NAV_ITEMS = [
+  { name: 'Beranda', href: '/', icon: HomeIcon, exact: true },
+  { name: 'Arsip Soal', href: '/arsip', icon: ArchiveIcon },
+  { name: 'Courses', href: '/courses', icon: CourseIcon },
+  { name: 'Try Out', href: '/tryout', icon: ClipboardCheckIcon },
+];
+
+const REFERENCE_ITEMS = [
+  {
+    name: 'TheoNotes',
+    desc: 'Catatan & modul materi terstruktur',
+    href: '/notes',
+    icon: NotesIcon,
+  },
+  {
+    name: 'Perpustakaan',
+    desc: 'Koleksi buku referensi & diktat PDF',
+    href: '/perpustakaan',
+    icon: LibraryIcon,
+  },
+  {
+    name: 'Teorema',
+    desc: 'Ensiklopedia & pembuktian teorema',
+    href: '/teorema',
+    icon: TheoremIcon,
+  },
+];
+
 export function Navbar() {
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
@@ -117,8 +178,10 @@ export function Navbar() {
   const [membershipState, setMembershipState] = useState<MembershipState>('free');
   const [hasPendingBill, setHasPendingBill] = useState(false);
 
-  // Mobile Menu State
+  // Dropdown & Mobile Menu State
+  const [isRefDropdownOpen, setIsRefDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const refDropdownRef = useRef<HTMLDivElement>(null);
 
   // Auth Modal State
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -214,9 +277,23 @@ export function Navbar() {
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    setIsRefDropdownOpen(false);
   }, [pathname]);
 
-  // Jangan render Navbar utama di subpage (subpage memakai navbar tersendiri)
+  // Tutup dropdown Referensi jika klik di luar area
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        refDropdownRef.current &&
+        !refDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsRefDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   if (!isMainPage) {
     return null;
   }
@@ -304,19 +381,14 @@ export function Navbar() {
     setLoadingAuth(false);
   };
 
-  const navLinks = [
-    { name: 'Beranda', href: '/', icon: HomeIcon, exact: true },
-    { name: 'Arsip Soal', href: '/arsip', icon: ArchiveIcon },
-    { name: 'TheoNotes', href: '/notes', icon: NotesIcon },
-    { name: 'Teorema', href: '/teorema', icon: TheoremIcon },
-    { name: 'Course', href: '/courses', icon: CourseIcon },
-    { name: 'Try Out', href: '/tryout', icon: ClipboardCheckIcon },
-  ];
-
   const isLinkActive = (href: string, exact?: boolean) => {
     if (exact) return pathname === href;
     return pathname.startsWith(href);
   };
+
+  const isReferenceActive = REFERENCE_ITEMS.some((item) =>
+    pathname.startsWith(item.href)
+  );
 
   const getInitials = (name: string, mail?: string) => {
     const text = name.trim() || (mail ? mail.split('@')[0] : 'U');
@@ -329,10 +401,10 @@ export function Navbar() {
 
   return (
     <>
-      {/* HEADER DESKTOP & MOBILE TRIGGER — Lebar Standar max-w-7xl */}
+      {/* HEADER DESKTOP & MOBILE TRIGGER */}
       <header className="border-b border-slate-200/80 dark:border-slate-800 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md sticky top-0 z-40 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-6">
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             {/* Tombol Hamburger Mobile */}
             <button
               type="button"
@@ -342,6 +414,9 @@ export function Navbar() {
             >
               <MenuIcon />
             </button>
+
+            {/* App Switcher (TheoQED Math <-> TheoQED Lingo) */}
+            <AppSwitcher />
 
             {/* Brand Logo */}
             <Link
@@ -354,9 +429,9 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* DESKTOP NAVIGATION (6 Menu Utama) */}
+          {/* DESKTOP NAVIGATION (Beranda, Arsip Soal, Courses, Try Out, Referensi) */}
           <nav className="hidden lg:flex items-center gap-6 xl:gap-8">
-            {navLinks.map((item) => {
+            {PRIMARY_NAV_ITEMS.map((item) => {
               const active = isLinkActive(item.href, item.exact);
               return (
                 <Link
@@ -375,9 +450,85 @@ export function Navbar() {
                 </Link>
               );
             })}
+
+            {/* Dropdown Referensi di Paling Kanan */}
+            <div
+              ref={refDropdownRef}
+              className="relative"
+              onMouseEnter={() => setIsRefDropdownOpen(true)}
+              onMouseLeave={() => setIsRefDropdownOpen(false)}
+            >
+              <button
+                type="button"
+                onClick={() => setIsRefDropdownOpen((prev) => !prev)}
+                aria-expanded={isRefDropdownOpen}
+                className={`relative py-1 flex items-center gap-1 text-xs tracking-wide whitespace-nowrap transition cursor-pointer ${
+                  isReferenceActive
+                    ? 'text-indigo-600 dark:text-indigo-400 font-bold'
+                    : 'text-slate-600 dark:text-slate-300 font-medium hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <span>Referensi</span>
+                <ChevronDownIcon
+                  className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                    isRefDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+                {isReferenceActive && (
+                  <span className="absolute -bottom-5 left-0 right-0 h-0.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
+                )}
+              </button>
+
+              {isRefDropdownOpen && (
+                <div className="absolute right-0 top-full pt-3 w-68 z-50">
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xl p-1.5 space-y-0.5">
+                    {REFERENCE_ITEMS.map((sub) => {
+                      const SubIcon = sub.icon;
+                      const subActive = isLinkActive(sub.href);
+                      return (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          onClick={() => setIsRefDropdownOpen(false)}
+                          className={`flex items-start gap-3 p-2.5 rounded-xl transition ${
+                            subActive
+                              ? 'bg-indigo-50/90 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400'
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-200'
+                          }`}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border ${
+                              subActive
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-slate-200/80 dark:border-slate-800'
+                            }`}
+                          >
+                            <SubIcon className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p
+                              className={`text-xs leading-tight ${
+                                subActive
+                                  ? 'font-bold text-indigo-600 dark:text-indigo-400'
+                                  : 'font-bold text-slate-900 dark:text-white'
+                              }`}
+                            >
+                              {sub.name}
+                            </p>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                              {sub.desc}
+                            </p>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </nav>
 
-          {/* USER ACCOUNT CONTROLS — Tinggi & Bentuk Seragam (h-9 rounded-xl) */}
+          {/* USER ACCOUNT CONTROLS */}
           <div className="flex items-center gap-2.5 shrink-0">
             <ThemeToggle />
 
@@ -514,7 +665,7 @@ export function Navbar() {
               Navigasi
             </span>
 
-            {navLinks.map((item) => {
+            {PRIMARY_NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const active = isLinkActive(item.href, item.exact);
               return (
@@ -539,6 +690,40 @@ export function Navbar() {
                 </Link>
               );
             })}
+
+            {/* Grup Referensi di Mobile */}
+            <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5 px-3 mb-2">
+                <ReferenceIcon className="w-3.5 h-3.5" />
+                <span>Referensi</span>
+              </span>
+
+              {REFERENCE_ITEMS.map((sub) => {
+                const SubIcon = sub.icon;
+                const active = isLinkActive(sub.href);
+                return (
+                  <Link
+                    key={sub.href}
+                    href={sub.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition ${
+                      active
+                        ? 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 font-bold'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <SubIcon
+                      className={`w-4 h-4 shrink-0 ${
+                        active
+                          ? 'text-indigo-600 dark:text-indigo-400'
+                          : 'text-slate-400 dark:text-slate-500'
+                      }`}
+                    />
+                    <span className="truncate">{sub.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
 
             {user && isAdmin && (
               <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
