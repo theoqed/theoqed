@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -44,14 +44,286 @@ interface VocabItem {
 }
 
 type ActiveTab = 'materi' | 'kosakata' | 'flashcard';
+type FontSizeOption = 'sm' | 'md' | 'lg' | 'xl';
 
-// Renderer teks terstruktur ringan tanpa dependensi tambahan
-function FormattedLessonContent({ text }: { text: string }) {
-  const blocks = text.split(/\n{2,}/).filter((b) => b.trim().length > 0);
+const FONT_SIZE_ORDER: FontSizeOption[] = ['sm', 'md', 'lg', 'xl'];
 
-  function renderInline(line: string) {
-    const parts = line.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+const FONT_SIZE_CONFIG: Record<
+  FontSizeOption,
+  {
+    label: string;
+    body: string;
+    table: string;
+    quote: string;
+    code: string;
+    inlineAudio: string;
+    h1: string;
+    h2: string;
+    h3: string;
+    lessonTitle: string;
+    vocabTerm: string;
+    vocabMeaning: string;
+    vocabExample: string;
+  }
+> = {
+  sm: {
+    label: 'Kecil',
+    body: 'text-sm leading-relaxed',
+    table: 'text-xs sm:text-sm',
+    quote: 'text-xs sm:text-sm',
+    code: 'text-xs',
+    inlineAudio: 'text-xs',
+    h1: 'text-xl',
+    h2: 'text-lg',
+    h3: 'text-base',
+    lessonTitle: 'text-xl sm:text-2xl',
+    vocabTerm: 'text-xl sm:text-2xl',
+    vocabMeaning: 'text-sm',
+    vocabExample: 'text-xs',
+  },
+  md: {
+    label: 'Normal',
+    body: 'text-base leading-relaxed',
+    table: 'text-sm sm:text-base',
+    quote: 'text-sm sm:text-base',
+    code: 'text-sm',
+    inlineAudio: 'text-sm',
+    h1: 'text-2xl',
+    h2: 'text-xl',
+    h3: 'text-lg',
+    lessonTitle: 'text-2xl sm:text-3xl',
+    vocabTerm: 'text-2xl sm:text-3xl',
+    vocabMeaning: 'text-base',
+    vocabExample: 'text-sm',
+  },
+  lg: {
+    label: 'Besar',
+    body: 'text-lg leading-relaxed',
+    table: 'text-base sm:text-lg',
+    quote: 'text-base sm:text-lg',
+    code: 'text-base',
+    inlineAudio: 'text-base',
+    h1: 'text-3xl',
+    h2: 'text-2xl',
+    h3: 'text-xl',
+    lessonTitle: 'text-2xl sm:text-3xl',
+    vocabTerm: 'text-2xl sm:text-3xl',
+    vocabMeaning: 'text-lg',
+    vocabExample: 'text-base',
+  },
+  xl: {
+    label: 'Ekstra',
+    body: 'text-xl leading-relaxed',
+    table: 'text-lg sm:text-xl',
+    quote: 'text-lg sm:text-xl',
+    code: 'text-lg',
+    inlineAudio: 'text-lg',
+    h1: 'text-3xl sm:text-4xl',
+    h2: 'text-2xl sm:text-3xl',
+    h3: 'text-xl sm:text-2xl',
+    lessonTitle: 'text-3xl sm:text-4xl',
+    vocabTerm: 'text-3xl sm:text-4xl',
+    vocabMeaning: 'text-xl',
+    vocabExample: 'text-lg',
+  },
+};
+
+type ContentBlock =
+  | { type: 'h1' | 'h2' | 'h3'; text: string }
+  | { type: 'blockquote'; text: string }
+  | { type: 'ul' | 'ol'; items: string[] }
+  | {
+      type: 'table';
+      headers: string[];
+      alignments: ('text-left' | 'text-center' | 'text-right')[];
+      rows: string[][];
+    }
+  | { type: 'paragraph'; text: string };
+
+const TABLE_SEPARATOR_REGEX = /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?$/;
+
+function parseTableCells(row: string): string[] {
+  return row
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
+}
+
+interface FormattedLessonContentProps {
+  text: string;
+  direction: 'ltr' | 'rtl';
+  fontSize: FontSizeOption;
+  speakingId: string | null;
+  onSpeak: (text: string, id: string, rate?: number) => void;
+}
+
+// Renderer teks terstruktur dengan dukungan tabel Markdown, tombol audio inline {{teks}}, dan skala huruf
+function FormattedLessonContent({
+  text,
+  direction,
+  fontSize,
+  speakingId,
+  onSpeak,
+}: FormattedLessonContentProps) {
+  const scale = FONT_SIZE_CONFIG[fontSize];
+
+  const blocks = useMemo<ContentBlock[]>(() => {
+    const rawLines = text.split(/\r?\n/);
+    const result: ContentBlock[] = [];
+    let i = 0;
+
+    while (i < rawLines.length) {
+      const line = rawLines[i].trim();
+
+      if (!line) {
+        i++;
+        continue;
+      }
+
+      // 1. Deteksi Tabel Markdown
+      const nextLine = rawLines[i + 1]?.trim() || '';
+      if (line.includes('|') && TABLE_SEPARATOR_REGEX.test(nextLine)) {
+        const headers = parseTableCells(line);
+        const alignments = parseTableCells(nextLine).map((sep) => {
+          if (sep.startsWith(':') && sep.endsWith(':')) return 'text-center';
+          if (sep.endsWith(':')) return 'text-right';
+          return 'text-left';
+        });
+
+        const rows: string[][] = [];
+        i += 2;
+        while (i < rawLines.length) {
+          const rowLine = rawLines[i].trim();
+          if (!rowLine || !rowLine.includes('|')) break;
+          rows.push(parseTableCells(rowLine));
+          i++;
+        }
+
+        result.push({ type: 'table', headers, alignments, rows });
+        continue;
+      }
+
+      // 2. Deteksi Heading
+      if (line.startsWith('### ')) {
+        result.push({ type: 'h3', text: line.slice(4) });
+        i++;
+        continue;
+      }
+      if (line.startsWith('## ')) {
+        result.push({ type: 'h2', text: line.slice(3) });
+        i++;
+        continue;
+      }
+      if (line.startsWith('# ')) {
+        result.push({ type: 'h1', text: line.slice(2) });
+        i++;
+        continue;
+      }
+
+      // 3. Deteksi Blockquote
+      if (line.startsWith('> ')) {
+        const quoteLines: string[] = [];
+        while (i < rawLines.length && rawLines[i].trim().startsWith('> ')) {
+          quoteLines.push(rawLines[i].trim().replace(/^>\s?/, ''));
+          i++;
+        }
+        result.push({ type: 'blockquote', text: quoteLines.join('\n') });
+        continue;
+      }
+
+      // 4. Deteksi Bullet List
+      if (/^[-*]\s+/.test(line)) {
+        const items: string[] = [];
+        while (i < rawLines.length && /^[-*]\s+/.test(rawLines[i].trim())) {
+          items.push(rawLines[i].trim().replace(/^[-*]\s+/, ''));
+          i++;
+        }
+        result.push({ type: 'ul', items });
+        continue;
+      }
+
+      // 5. Deteksi Numbered List
+      if (/^\d+\.\s+/.test(line)) {
+        const items: string[] = [];
+        while (i < rawLines.length && /^\d+\.\s+/.test(rawLines[i].trim())) {
+          items.push(rawLines[i].trim().replace(/^\d+\.\s+/, ''));
+          i++;
+        }
+        result.push({ type: 'ol', items });
+        continue;
+      }
+
+      // 6. Paragraf Biasa
+      const paraLines: string[] = [];
+      while (i < rawLines.length) {
+        const current = rawLines[i].trim();
+        if (!current) break;
+        const upcoming = rawLines[i + 1]?.trim() || '';
+        const startsTable = current.includes('|') && TABLE_SEPARATOR_REGEX.test(upcoming);
+        const startsSpecial =
+          current.startsWith('# ') ||
+          current.startsWith('## ') ||
+          current.startsWith('### ') ||
+          current.startsWith('> ') ||
+          /^[-*]\s+/.test(current) ||
+          /^\d+\.\s+/.test(current) ||
+          startsTable;
+
+        if (startsSpecial && paraLines.length > 0) break;
+        paraLines.push(current);
+        i++;
+      }
+
+      if (paraLines.length > 0) {
+        result.push({ type: 'paragraph', text: paraLines.join('\n') });
+      }
+    }
+
+    return result;
+  }, [text]);
+
+  function renderInline(line: string, keyPrefix: string) {
+    const parts = line.split(/(\{\{[^}]+\}\}|\*\*[^*]+\*\*|`[^`]+`)/g);
     return parts.map((part, i) => {
+      if (part.startsWith('{{') && part.endsWith('}}')) {
+        const spokenText = part.slice(2, -2).trim();
+        const audioId = `${keyPrefix}-audio-${i}`;
+        const isPlaying = speakingId === audioId;
+
+        return (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onSpeak(spokenText, audioId, 0.95)}
+            title={`Dengarkan pelafalan: ${spokenText}`}
+            className={`inline-flex items-center gap-1.5 mx-0.5 px-2 py-0.5 rounded-lg border font-bold align-baseline transition cursor-pointer ${
+              scale.inlineAudio
+            } ${
+              isPlaying
+                ? 'bg-indigo-600 border-indigo-600 text-white'
+                : 'bg-indigo-50/90 dark:bg-indigo-950/70 border-indigo-200/80 dark:border-indigo-800/80 text-indigo-700 dark:text-indigo-300 hover:border-indigo-400'
+            }`}
+          >
+            <svg
+              className="w-3.5 h-3.5 shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M11 5L6 9H2v6h4l5 4V5zm4.54 3.46a5 5 0 010 7.07"
+              />
+            </svg>
+            <span dir={direction}>{spokenText}</span>
+          </button>
+        );
+      }
+
       if (part.startsWith('**') && part.endsWith('**')) {
         return (
           <strong key={i} className="font-bold text-slate-900 dark:text-white">
@@ -59,75 +331,115 @@ function FormattedLessonContent({ text }: { text: string }) {
           </strong>
         );
       }
+
       if (part.startsWith('`') && part.endsWith('`')) {
         return (
           <code
             key={i}
-            className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-mono text-xs"
+            className={`px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-mono ${scale.code}`}
           >
             {part.slice(1, -1)}
           </code>
         );
       }
+
       return <React.Fragment key={i}>{part}</React.Fragment>;
     });
   }
 
   return (
-    <div className="space-y-4 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+    <div className={`space-y-4 text-slate-700 dark:text-slate-300 ${scale.body}`}>
       {blocks.map((block, idx) => {
-        const trimmed = block.trim();
-
-        if (trimmed.startsWith('### ')) {
+        if (block.type === 'table') {
           return (
-            <h3 key={idx} className="text-base font-extrabold text-slate-900 dark:text-white pt-2">
-              {trimmed.slice(4)}
+            <div
+              key={idx}
+              className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 my-2"
+            >
+              <table className={`w-full border-collapse ${scale.table}`}>
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800">
+                    {block.headers.map((header, hIdx) => (
+                      <th
+                        key={hIdx}
+                        className={`px-4 py-3 font-extrabold text-slate-900 dark:text-white whitespace-nowrap ${
+                          block.alignments[hIdx] || 'text-left'
+                        }`}
+                      >
+                        {renderInline(header, `tbl-${idx}-h-${hIdx}`)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 bg-white dark:bg-slate-900">
+                  {block.rows.map((cells, rIdx) => (
+                    <tr
+                      key={rIdx}
+                      className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                    >
+                      {block.headers.map((_, cIdx) => (
+                        <td
+                          key={cIdx}
+                          className={`px-4 py-2.5 text-slate-700 dark:text-slate-300 ${
+                            block.alignments[cIdx] || 'text-left'
+                          }`}
+                        >
+                          {renderInline(cells[cIdx] || '', `tbl-${idx}-r-${rIdx}-c-${cIdx}`)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+
+        if (block.type === 'h3') {
+          return (
+            <h3 key={idx} className={`${scale.h3} font-extrabold text-slate-900 dark:text-white pt-2`}>
+              {block.text}
             </h3>
           );
         }
-        if (trimmed.startsWith('## ')) {
+        if (block.type === 'h2') {
           return (
-            <h2 key={idx} className="text-lg font-black text-slate-900 dark:text-white pt-3">
-              {trimmed.slice(3)}
+            <h2 key={idx} className={`${scale.h2} font-black text-slate-900 dark:text-white pt-3`}>
+              {block.text}
             </h2>
           );
         }
-        if (trimmed.startsWith('# ')) {
+        if (block.type === 'h1') {
           return (
-            <h1 key={idx} className="text-xl font-black text-slate-900 dark:text-white pt-3">
-              {trimmed.slice(2)}
+            <h1 key={idx} className={`${scale.h1} font-black text-slate-900 dark:text-white pt-3`}>
+              {block.text}
             </h1>
           );
         }
-        if (trimmed.startsWith('> ')) {
+        if (block.type === 'blockquote') {
           return (
             <blockquote
               key={idx}
-              className="border-l-4 border-indigo-500 bg-slate-50 dark:bg-slate-800/60 px-4 py-3 rounded-r-xl text-xs sm:text-sm text-slate-700 dark:text-slate-200"
+              className={`border-l-4 border-indigo-500 bg-slate-50 dark:bg-slate-800/60 px-4 py-3 rounded-r-xl text-slate-700 dark:text-slate-200 whitespace-pre-line ${scale.quote}`}
             >
-              {renderInline(trimmed.replace(/^>\s?/gm, ''))}
+              {renderInline(block.text, `bq-${idx}`)}
             </blockquote>
           );
         }
-
-        const lines = trimmed.split('\n');
-        const isBulletList = lines.every((l) => /^[-*]\s+/.test(l.trim()));
-        if (isBulletList) {
+        if (block.type === 'ul') {
           return (
             <ul key={idx} className="list-disc pl-5 space-y-1.5">
-              {lines.map((l, li) => (
-                <li key={li}>{renderInline(l.trim().replace(/^[-*]\s+/, ''))}</li>
+              {block.items.map((item, li) => (
+                <li key={li}>{renderInline(item, `ul-${idx}-${li}`)}</li>
               ))}
             </ul>
           );
         }
-
-        const isOrderedList = lines.every((l) => /^\d+\.\s+/.test(l.trim()));
-        if (isOrderedList) {
+        if (block.type === 'ol') {
           return (
             <ol key={idx} className="list-decimal pl-5 space-y-1.5">
-              {lines.map((l, li) => (
-                <li key={li}>{renderInline(l.trim().replace(/^\d+\.\s+/, ''))}</li>
+              {block.items.map((item, li) => (
+                <li key={li}>{renderInline(item, `ol-${idx}-${li}`)}</li>
               ))}
             </ol>
           );
@@ -135,7 +447,7 @@ function FormattedLessonContent({ text }: { text: string }) {
 
         return (
           <p key={idx} className="whitespace-pre-line">
-            {renderInline(trimmed)}
+            {renderInline(block.text, `p-${idx}`)}
           </p>
         );
       })}
@@ -159,6 +471,15 @@ export default function LanguageModuleReaderPage() {
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [fontSize, setFontSize] = useState<FontSizeOption>('md');
+
+  // State Floating Tooltip Select-to-Speak di Materi
+  const lessonArticleRef = useRef<HTMLElement | null>(null);
+  const [selectionPopup, setSelectionPopup] = useState<{
+    text: string;
+    top: number;
+    left: number;
+  } | null>(null);
 
   // State Pencarian Kosakata
   const [vocabSearch, setVocabSearch] = useState('');
@@ -172,6 +493,14 @@ export default function LanguageModuleReaderPage() {
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains('dark'));
+    try {
+      const savedSize = localStorage.getItem('theo_lingo_font_size') as FontSizeOption | null;
+      if (savedSize && FONT_SIZE_ORDER.includes(savedSize)) {
+        setFontSize(savedSize);
+      }
+    } catch {
+      // Abaikan jika storage tidak tersedia
+    }
   }, []);
 
   useEffect(() => {
@@ -179,6 +508,25 @@ export default function LanguageModuleReaderPage() {
       loadModuleContent(code, slug);
     }
   }, [code, slug]);
+
+  // Bersihkan popup seleksi saat pindah tab atau materi
+  useEffect(() => {
+    setSelectionPopup(null);
+  }, [activeTab, activeLessonIndex]);
+
+  function changeFontSize(delta: -1 | 1) {
+    setFontSize((prev) => {
+      const currentIdx = FONT_SIZE_ORDER.indexOf(prev);
+      const nextIdx = Math.max(0, Math.min(FONT_SIZE_ORDER.length - 1, currentIdx + delta));
+      const nextSize = FONT_SIZE_ORDER[nextIdx];
+      try {
+        localStorage.setItem('theo_lingo_font_size', nextSize);
+      } catch {
+        // Abaikan jika storage tidak tersedia
+      }
+      return nextSize;
+    });
+  }
 
   async function loadModuleContent(langCode: string, modSlug: string) {
     setLoading(true);
@@ -266,6 +614,37 @@ export default function LanguageModuleReaderPage() {
     [language]
   );
 
+  // Deteksi teks yang diblok pengguna di dalam area materi
+  const handleLessonSelection = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const selection = window.getSelection();
+    const selectedText = selection?.toString().trim() || '';
+
+    if (
+      !selection ||
+      selection.rangeCount === 0 ||
+      selectedText.length === 0 ||
+      selectedText.length > 300 ||
+      !lessonArticleRef.current?.contains(selection.anchorNode)
+    ) {
+      setSelectionPopup(null);
+      return;
+    }
+
+    const rect = selection.getRangeAt(0).getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) {
+      setSelectionPopup(null);
+      return;
+    }
+
+    const placeBelow = rect.top < 76;
+    const top = placeBelow ? rect.bottom + 8 : rect.top - 44;
+    const rawCenter = rect.left + rect.width / 2;
+    const left = Math.max(115, Math.min(window.innerWidth - 115, rawCenter));
+
+    setSelectionPopup({ text: selectedText, top, left });
+  }, []);
+
   // Filter Kosakata
   const filteredVocab = useMemo(() => {
     const q = vocabSearch.trim().toLowerCase();
@@ -296,7 +675,6 @@ export default function LanguageModuleReaderPage() {
       if (rating === 'hard') {
         return [...rest, head];
       }
-      // 'again' -> sisipkan kembali setelah 2 kartu berikutnya
       const insertAt = Math.min(2, rest.length);
       const next = [...rest];
       next.splice(insertAt, 0, head);
@@ -345,9 +723,52 @@ export default function LanguageModuleReaderPage() {
   const currentLesson = lessons[activeLessonIndex] || null;
   const flashcardProgress =
     vocabList.length > 0 ? Math.round((masteredIds.length / vocabList.length) * 100) : 0;
+  const activeScale = FONT_SIZE_CONFIG[fontSize];
+  const fontSizeIdx = FONT_SIZE_ORDER.indexOf(fontSize);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans flex flex-col transition-colors duration-200">
+      {/* Floating Toolbar Select-to-Speak */}
+      {selectionPopup && activeTab === 'materi' && (
+        <div
+          style={{ top: selectionPopup.top, left: selectionPopup.left }}
+          className="fixed z-50 -translate-x-1/2 flex items-center gap-1 p-1 rounded-xl bg-slate-900 dark:bg-slate-800 text-white shadow-lg border border-slate-700/80"
+        >
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => speakText(selectionPopup.text, 'sel-normal', 1)}
+            className={`h-7 px-2.5 rounded-lg text-[11px] font-bold inline-flex items-center gap-1.5 transition cursor-pointer ${
+              speakingId === 'sel-normal'
+                ? 'bg-indigo-600 text-white'
+                : 'hover:bg-slate-800 dark:hover:bg-slate-700 text-white'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M11 5L6 9H2v6h4l5 4V5zm4.54 3.46a5 5 0 010 7.07"
+              />
+            </svg>
+            <span>Dengarkan</span>
+          </button>
+
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => speakText(selectionPopup.text, 'sel-slow', 0.65)}
+            className={`h-7 px-2 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+              speakingId === 'sel-slow'
+                ? 'bg-indigo-600 text-white'
+                : 'text-slate-300 hover:bg-slate-800 dark:hover:bg-slate-700'
+            }`}
+          >
+            0.6x
+          </button>
+        </div>
+      )}
+
       {/* Top Reader Navbar */}
       <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3">
@@ -374,6 +795,37 @@ export default function LanguageModuleReaderPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Kontrol Ukuran Huruf (A- / A+) */}
+            <div
+              role="group"
+              aria-label="Pengaturan ukuran huruf modul"
+              className="inline-flex items-center h-8 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 overflow-hidden"
+            >
+              <button
+                type="button"
+                onClick={() => changeFontSize(-1)}
+                disabled={fontSizeIdx === 0}
+                title="Perkecil huruf"
+                aria-label="Perkecil huruf"
+                className="h-full px-2.5 text-[11px] font-extrabold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-35 transition cursor-pointer disabled:cursor-not-allowed"
+              >
+                A-
+              </button>
+              <span className="hidden md:inline-block px-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 border-x border-slate-200/80 dark:border-slate-700/80 select-none">
+                {activeScale.label}
+              </span>
+              <button
+                type="button"
+                onClick={() => changeFontSize(1)}
+                disabled={fontSizeIdx === FONT_SIZE_ORDER.length - 1}
+                title="Perbesar huruf"
+                aria-label="Perbesar huruf"
+                className="h-full px-2.5 text-xs font-extrabold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-35 transition cursor-pointer disabled:cursor-not-allowed"
+              >
+                A+
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => setFocusMode((prev) => !prev)}
@@ -507,24 +959,47 @@ export default function LanguageModuleReaderPage() {
             )}
 
             {currentLesson ? (
-              <article className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-10 space-y-6">
-                <div className="border-b border-slate-100 dark:border-slate-800 pb-4 space-y-1">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                    Bagian {activeLessonIndex + 1} dari {lessons.length}
+              <article
+                ref={lessonArticleRef}
+                onMouseUp={handleLessonSelection}
+                onTouchEnd={handleLessonSelection}
+                className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-10 space-y-6"
+              >
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-4 flex flex-wrap items-end justify-between gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                      Bagian {activeLessonIndex + 1} dari {lessons.length}
+                    </span>
+                    <h2 className={`${activeScale.lessonTitle} font-black text-slate-900 dark:text-white`}>
+                      {currentLesson.title}
+                    </h2>
+                  </div>
+
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                    Blok kata/kalimat target mana pun untuk mendengar pelafalan
                   </span>
-                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
-                    {currentLesson.title}
-                  </h2>
                 </div>
 
-                <FormattedLessonContent text={currentLesson.content_md} />
+                <FormattedLessonContent
+                  text={currentLesson.content_md}
+                  direction={language.direction}
+                  fontSize={fontSize}
+                  speakingId={speakingId}
+                  onSpeak={speakText}
+                />
 
                 {currentLesson.grammar_notes && (
                   <div className="p-5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-900/70 space-y-2">
                     <div className="text-xs font-extrabold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
                       Catatan Tata Bahasa &amp; Pola Kalimat
                     </div>
-                    <FormattedLessonContent text={currentLesson.grammar_notes} />
+                    <FormattedLessonContent
+                      text={currentLesson.grammar_notes}
+                      direction={language.direction}
+                      fontSize={fontSize}
+                      speakingId={speakingId}
+                      onSpeak={speakText}
+                    />
                   </div>
                 )}
 
@@ -532,7 +1007,10 @@ export default function LanguageModuleReaderPage() {
                   <button
                     type="button"
                     disabled={activeLessonIndex === 0}
-                    onClick={() => setActiveLessonIndex((i) => Math.max(0, i - 1))}
+                    onClick={() => {
+                      setActiveLessonIndex((i) => Math.max(0, i - 1));
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
                     className="h-9 px-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
                   >
                     ← Materi Sebelumnya
@@ -541,7 +1019,10 @@ export default function LanguageModuleReaderPage() {
                   {activeLessonIndex < lessons.length - 1 ? (
                     <button
                       type="button"
-                      onClick={() => setActiveLessonIndex((i) => i + 1)}
+                      onClick={() => {
+                        setActiveLessonIndex((i) => i + 1);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
                       className="h-9 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition cursor-pointer"
                     >
                       Materi Berikutnya →
@@ -549,7 +1030,10 @@ export default function LanguageModuleReaderPage() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => setActiveTab('kosakata')}
+                      onClick={() => {
+                        setActiveTab('kosakata');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
                       className="h-9 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition cursor-pointer"
                     >
                       Lanjut ke Kosakata →
@@ -607,7 +1091,7 @@ export default function LanguageModuleReaderPage() {
                         <div className="flex flex-wrap items-baseline gap-2">
                           <span
                             dir={language.direction}
-                            className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white"
+                            className={`${activeScale.vocabTerm} font-black text-slate-900 dark:text-white`}
                           >
                             {item.term}
                           </span>
@@ -618,7 +1102,7 @@ export default function LanguageModuleReaderPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                          <span className={`${activeScale.vocabMeaning} font-bold text-slate-700 dark:text-slate-200`}>
                             {item.meaning}
                           </span>
                           {item.part_of_speech && (
@@ -664,7 +1148,7 @@ export default function LanguageModuleReaderPage() {
 
                     {item.example_sentence && (
                       <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-start justify-between gap-2">
-                        <div className="space-y-0.5 text-xs">
+                        <div className={`space-y-0.5 ${activeScale.vocabExample}`}>
                           <p dir={language.direction} className="font-semibold text-slate-800 dark:text-slate-200">
                             {item.example_sentence}
                           </p>
@@ -674,7 +1158,7 @@ export default function LanguageModuleReaderPage() {
                             </p>
                           )}
                           {item.example_meaning && (
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            <p className="text-slate-500 dark:text-slate-400">
                               {item.example_meaning}
                             </p>
                           )}
